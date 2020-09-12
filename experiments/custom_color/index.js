@@ -5,17 +5,44 @@ function init_custom_pallete(color_num) {
 	var CTX = CANVAS.getContext("2d");
 	var PALLETE = document.getElementById("color-pallete");
 	var REFRESH_BUTTON = document.getElementById("refresh-icon");
+	var NEXT_BUTTON = document.getElementById("color-next-button");
+	var COLOR_INPUT = document.getElementById('color-input');
 	var SPRITE = {
+		asset_src: {
+			idle: {
+				src: ["../assets/player_idle.png"],
+				frame_count: 4
+			},
+			run: {
+				src: ["../assets/player_run.png"],
+				frame_count: 6
+			}
+		},
+		curr_state: "idle",
 		asset: new Image(),
 		frame_count: 4,
 		frame_idx: 0,
 		w: 24,
 		h: 24,
-		x: 10,
-		y: 10,
-		color: [212, 212, 212]
+		x: 0,
+		y: 0,
+		color: [[212, 212, 212]]
 	};
 	var start;
+
+	// input: img: Image Object, new_color: [r, g, b]
+	// output: canvas of img width and height w/ img placed at (0, 0)
+	function recolor_img(img, new_color) {
+		var buffer = document.createElement("canvas");
+		var buff_ctx = buffer.getContext('2d');
+		buffer.width = img.width;
+		buffer.height = img.height;
+		buff_ctx.drawImage(img, 0, 0);
+		let buff_data = buff_ctx.getImageData(0, 0, img.width, img.height);
+		change_sprite_color(buff_data, new_color, buff_ctx);
+		console.log("w: " + buffer.width + " | h: " + buffer.height);
+		return buffer;
+	}
 
 	function handle_color_refresh() {
 		let colors = document.getElementsByClassName("pallete-item")
@@ -25,17 +52,38 @@ function init_custom_pallete(color_num) {
 		}
 	}
 
+	// function handle_buffer_load() {
+	// 	SPRITE.asset = this;
+	// 	console.log(this);
+	// }
+
 	function handle_color_click() {
+		NEXT_BUTTON.style.backgroundColor = this.style.backgroundColor;
 		let new_color = parse_rgb_str(this.style.backgroundColor);
 		console.log(new_color);
 		console.log(this.style.backgroundColor);
-		change_sprite_color(new_color);
+		// let px_data = CTX.getImageData(SPRITE.x, SPRITE.y, SPRITE.w, SPRITE.h);
+		// change_sprite_color(px_data, new_color, CTX);
 
+		// get_buffer_asset_output(new_color);
+		// let curr_src = SPRITE.asset_src[SPRITE.curr_state].src;
+		// console.log(curr_src);
+		// var buff_img = new Image();
+		// buff_img.src = curr_src[curr_src.length - 1];
+		// buff_img.addEventListener('load', handle_buffer_load);
+
+		SPRITE.asset = recolor_img(SPRITE.asset, new_color);
+		// render_sprite();
+	}
+
+	function handle_input_change(e) {
+		
 	}
 
 	function handle_sprite_load() {
-		// window.requestAnimationFrame(step);
-		render_sprite();
+		window.requestAnimationFrame(step);
+		// render_sprite();
+		SPRITE.asset.removeEventListener('load', handle_sprite_load);
 	}
 
 	function handle_window_resize() {
@@ -43,8 +91,9 @@ function init_custom_pallete(color_num) {
 			/ CANVAS.clientHeight);
 	}
 
-	function set_handlers() {
+	function set_listeners() {
 		REFRESH_BUTTON.addEventListener('click', handle_color_refresh);
+		COLOR_INPUT.addEventListener('focus', handle_input_change);
 		SPRITE.asset.addEventListener('load', handle_sprite_load);
 		window.addEventListener('resize', handle_window_resize);
 	}
@@ -85,25 +134,21 @@ function init_custom_pallete(color_num) {
 		console.log(CANVAS.width, CANVAS.height);
 	}
 
-	function change_sprite_color(new_color) {
-		let px_data = CTX.getImageData(SPRITE.x, SPRITE.y, SPRITE.w, SPRITE.h);
+	function change_sprite_color(px_data, new_color, ctx) {
 		let px_arr = px_data.data;
 		let px_rep_count = 0;
-		// console.log(px_arr.length);
+		let back_idx = SPRITE.color.length - 1;
 		for(let i = 0; i < px_arr.length; i += 4) {
 			if (px_arr[i + 3] == 0) continue;
-			let curr_px = px_arr.slice(i, i + 3).toString();
-			let sprite_px = SPRITE.color.toString();
-			// console.log(curr_px + " | " + sprite_px);
 			for(let j = 0; j < 3; j++) {
-				let d_color = px_arr[i + j] - SPRITE.color[j];
-				px_arr[i + j] = new_color[j] + d_color;
+				let d_color = px_arr[i + j] - SPRITE.color[back_idx][j];
+				px_arr[i + j] = (new_color[j] + d_color) % 255;
 			}
 			px_rep_count++;
 		}
-		SPRITE.color = new_color;
+		SPRITE.color.push(new_color);
 		px_data.data = px_arr;
-		CTX.putImageData(px_data, SPRITE.x, SPRITE.y);
+		ctx.putImageData(px_data, SPRITE.x, SPRITE.y);
 		console.log("replaced " + px_rep_count);
 	}
 
@@ -112,7 +157,32 @@ function init_custom_pallete(color_num) {
 			/ CANVAS.clientHeight);
 	}
 
-	set_handlers();
+	// function init_buffer(state) {
+	// 	BUFFER.width = SPRITE.w * SPRITE.frame_count;
+	// 	BUFFER.height = SPRITE.h;
+	// 	BUFF_CTX.clearRect(0, 0, BUFFER.width, BUFFER.height);
+	// 	let back_idx = SPRITE.asset_src[state].src.length - 1;
+	// 	var buff_img = new Image();
+	// 	buff_img.src = SPRITE.asset_src[state].src[back_idx];
+	// 	buff_img.addEventListener('load', render_buffer_asset);
+	// }
+
+	// function render_buffer_asset() {
+	// 	var buff_img = this;
+	// 	BUFF_CTX.drawImage(buff_img, 0, 0);
+	// }
+
+	// function get_buffer_asset_output(new_color) {
+	// 	let states = Object.keys(SPRITE.asset_src);
+	// 	for(let i = 0; i < states.length; i++) {
+	// 		init_buffer(states[i]);
+	// 		let px_data = BUFF_CTX.getImageData(0, 0, BUFFER.width, BUFFER.height);
+	// 		change_sprite_color(px_data, new_color, BUFF_CTX);
+	// 		SPRITE.asset_src[states[i]].src.push(BUFFER.toDataURL());
+	// 	}
+	// }
+
+	set_listeners();
 	set_canvas_aspect();
 	load_sprite();
 	populate_pallete(color_num);
