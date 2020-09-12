@@ -1,4 +1,4 @@
-function init_sprites( callback_init ) {
+function init_sprites( callback_init, SCALE ) {
 	var IMG_SERPENT_ICE = new Image(),
 		IMG_SERPENT_EARTH = new Image(),
 		IMG_SERPENT_FIRE = new Image(),
@@ -23,6 +23,22 @@ function init_sprites( callback_init ) {
 		num_img_load = 0;
 
 	function callback_loaded() {
+		if( SCALE > 1 ) {
+			var entries = Object.entries( evt );
+			var	value,
+				tmp,
+				tmp_ctx;
+			for( var i = 0; i < entries.length; ++i ) {
+				value = entries[ i ][ 1 ];
+				tmp = document.createElement( "canvas" );
+				tmp.width = value.img.width;
+				tmp.height = value.img.height;
+				tmp_ctx = tmp.getContext( "2d" );
+				tmp_ctx.imageSmoothingEnabled = false;
+				tmp_ctx.drawImage( value.img, 0, 0 );
+				value.img = tmp;
+			}
+		}
 		callback_init( evt );
 	}
 
