@@ -421,7 +421,7 @@ function update_me( ts ) {
 			}
 		} else {
 			if( me.last_fired == -1 ) me.last_fired = ts - 200;
-			if( ts - me.last_fired >= 200 ) {
+			if( ts - me.last_fired >= 100 ) {
 				var bullet_idx = activate_bullet( me.idx );
 				var bullet = bullets[ me.idx ][ bullet_idx ];
 				bullet.state.x = me.player.state.x + HWIDTH_PLAYER;
@@ -772,7 +772,7 @@ function draw_bullets() {
 					break;
 			}
 			ctx_ent.translate( bullet.state.x, bullet.state.y );
-			ctx_ent.rotate( ANGLES[ bullet.state.angle ][ 0 ] );
+			ctx_ent.rotate( ANGLES[ ( bullet.state.angle + 180 ) % 360 ][ 0 ] );
 			ctx_ent.drawImage( img, 0, 0 );
 			//ctx_view.fillRect( 0, 0, 32, 32 );
 			ctx_ent.setTransform( 1, 0, 0, 1, 0, 0 );
