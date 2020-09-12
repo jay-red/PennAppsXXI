@@ -2,8 +2,13 @@ var SCALE = 3;
 
 var IMG_FOREST = new Image();
 
-var SERPENT_ACCELERATION = 0.0002 * SCALE,
-	SERPENT_VELOCITY = 0.57 * SCALE;
+//var SERPENT_ACCELERATION = 0.0002 * SCALE,
+//	SERPENT_VELOCITY = 0.57 * SCALE;
+
+var BASE_SERPENT_ACCELERATION = 0.0036 * SCALE,
+	BASE_SERPENT_VELOCITY = 1.2506 * SCALE,
+	EXP_SERPENT_ACCELERATION = -0.882,
+	EXP_SERPENT_VELOCITY = -0.278;
 
 var BULLET_VELOCITY = 0.7 * SCALE;
 
@@ -138,7 +143,7 @@ function EntityState() {
 	this.last_update = -1;
 }
 
-function SerpentHead( idx, split, power, ai ) {
+function SerpentHead( idx, split, power, ai, length ) {
 	this.idx = idx;
 	this.is_head = true;
 	this.state = new EntityState();
@@ -147,6 +152,7 @@ function SerpentHead( idx, split, power, ai ) {
 	this.can_split = split;
 	this.ai = ai;
 	this.target = null;
+	this.length = length;
 }
 
 function SerpentBody( idx, idx_head, split, power, ai ) {
@@ -295,7 +301,7 @@ function init_segments( serpents ) {
 			idx = segments.length;
 			if( j == 0 ) {
 				head_idx = idx;
-				segments.push( new SerpentHead( idx, split, power, ai ) );
+				segments.push( new SerpentHead( idx, split, power, ai, num_segs ) );
 				segments[ idx ].state.x = Math.random() * WIDTH_MAP;
 				segments[ idx ].state.y = Math.random() * HEIGHT_MAP;
 			} else {
@@ -499,7 +505,10 @@ function update_player( ts, player ) {
 		x_next = 0;
 		dx = 0;
 	}
-	if( y_next < 0 ) y_next = 0;
+	if( y_next < 0 ) {
+		y_next = 0;
+		dy = 0;
+	}
 
 	if( x_next + WIDTH_PLAYER >= WIDTH_MAP ) {
 		x_next = WIDTH_MAP - WIDTH_PLAYER;
@@ -517,8 +526,8 @@ function update_player( ts, player ) {
 		var right_tile = Math.floor( ( x_next + WIDTH_PLAYER - 1 ) / WIDTH_TILE );
 		var start_tile_y = Math.floor( ( y_last + HEIGHT_PLAYER - 1 ) / HEIGHT_TILE ) + 1;
 		var end_tile_y = Math.floor( ( y_next + HEIGHT_PLAYER ) / HEIGHT_TILE );
-		for( tx = left_tile; tx <= right_tile && c; ++tx ) {
-			for( ty = start_tile_y; ty <= end_tile_y; ++ty ) {
+		for( ty = start_tile_y; ty <= end_tile_y && c; ++ty ) {
+			for( tx = left_tile; tx <= right_tile; ++tx ) {
 				if( get_tile( tx, ty ) > 0 ) {
 					y_next = ( ty * HEIGHT_TILE - HEIGHT_PLAYER );
 					c = false;
@@ -542,8 +551,8 @@ function update_head( ts, head ) {
 	if( head.state.last_update == -1 ) head.state.last_update = ts;
 	var ticks = ts - head.state.last_update;
 
-    var speed = SERPENT_VELOCITY;
-    var acceleration = SERPENT_ACCELERATION * ticks;
+    var speed = BASE_SERPENT_VELOCITY * ( head.length ** EXP_SERPENT_VELOCITY );
+    var acceleration = BASE_SERPENT_ACCELERATION * ( head.length ** EXP_SERPENT_ACCELERATION ) * ticks;
 
     if( head.target == null || ( !head.target.state.active ) || ( !head.target.alive ) ) {
     	var player;
@@ -980,7 +989,7 @@ function init_listeners() {
 		document.addEventListener( "keydown", handle_keydown );
 		document.addEventListener( "keyup", handle_keyup );
 	}
-	init_segments( [ create_serpent( false, 0, 1, 20 ) ] );
+	init_segments( [ create_serpent( false, 0, 1, 80 ), create_serpent( false, 1, 1, 80 ), create_serpent( false, 2, 1, 80 ), create_serpent( false, 3, 1, 80 ) ] );
 	IMG_FOREST.addEventListener( "load", callback_forest );
 	IMG_FOREST.addEventListener( "error", callback_forest );
 	//IMG_FOREST.src = "assets/forest.png";
