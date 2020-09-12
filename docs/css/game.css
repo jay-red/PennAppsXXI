@@ -5,6 +5,15 @@ html, body {
 	padding: 0px;
 }
 
+#hud {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	display: block;
+	height: 100vh;
+	width: 100vw;
+}
+
 #game-screen {
 	display: block;
 	height: 100%;

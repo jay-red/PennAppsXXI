@@ -1,5 +1,7 @@
 var SCALE = 3;
 
+var IMG_FOREST = new Image();
+
 var SERPENT_ACCELERATION = 0.0002 * SCALE,
 	SERPENT_VELOCITY = 0.57 * SCALE;
 
@@ -39,6 +41,9 @@ var WIDTH_VIEW = 80 * WIDTH_TILE,
 	HEIGHT_VIEW = WIDTH_VIEW * window.screen.height / window.screen.width,
 	HWIDTH_VIEW = WIDTH_VIEW / 2,
 	HHEIGHT_VIEW = HEIGHT_VIEW / 2;
+
+var WIDTH_IMG_FOREST = 800,
+	HEIGHT_IMG_FOREST = 448;
 
 var WIDTH_IMG_BULLET = 24 * SCALE,
 	HEIGHT_IMG_BULLET = 1 * SCALE;
@@ -81,6 +86,8 @@ function init_angles() {
 }
 
 init_angles();
+
+var hud = document.getElementById( "hud" );
 
 var canvas_view = document.getElementById( "game-canvas" ),
 	ctx_view = null,
@@ -307,6 +314,39 @@ function create_serpent( split, power, ai, length ) {
 	return serpent;
 }
 
+function contains_bullet( segment, bullet ) {
+	var dots = get_dots( segment );
+	var hdot = dots[ 0 ][ 0 ] * bullet.state.x + dots[ 0 ][ 1 ] * bullet.state.y;
+	var vdot = dots[ 1 ][ 0 ] * bullet.state.x + dots[ 1 ][ 1 ] * bullet.state.y;
+	return between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] );
+}
+
+function overlaps_player( segment, player ) {
+	var dots = get_dots( segment );
+	var hdot, vdot;
+	x_tl = player.state.x;
+	y_tl = player.state.y;
+	x_tr = player.state.x + WIDTH_PLAYER;
+	y_tr = player.state.y;
+	x_br = player.state.x + WIDTH_PLAYER;
+	y_br = player.state.y + HEIGHT_PLAYER;
+	x_bl = player.state.x;
+	y_bl = player.state.y + HEIGHT_PLAYER;
+	hdot = dots[ 0 ][ 0 ] * x_tl + dots[ 0 ][ 1 ] * y_tl;
+	vdot = dots[ 1 ][ 0 ] * x_tl + dots[ 1 ][ 1 ] * y_tl;
+	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
+	hdot = dots[ 0 ][ 0 ] * x_tr + dots[ 0 ][ 1 ] * y_tr;
+	vdot = dots[ 1 ][ 0 ] * x_tr + dots[ 1 ][ 1 ] * y_tr;
+	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
+	hdot = dots[ 0 ][ 0 ] * x_br + dots[ 0 ][ 1 ] * y_br;
+	vdot = dots[ 1 ][ 0 ] * x_br + dots[ 1 ][ 1 ] * y_br;
+	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
+	hdot = dots[ 0 ][ 0 ] * x_bl + dots[ 0 ][ 1 ] * y_bl;
+	vdot = dots[ 1 ][ 0 ] * x_bl + dots[ 1 ][ 1 ] * y_bl;
+	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
+	return false;
+}
+
 function update_me( ts ) {
 	if( me == null ) return;
 	if( me.last_update == -1 ) me.last_update = ts;
@@ -446,11 +486,10 @@ function update_player( ts, player ) {
 	var x_next = player.state.x + dx * ticks,
 		y_next = player.state.y + dy * ticks;
 
-	if( ( player.down && !player.dropped || player.hit ) && dy_last == 0 ) {
-		player.hit = false;
+	if( player.down && !player.dropped && dy_last == 0 || player.hit ) {
 		player.dropped = true;
+		player.hit = false;
 		y_last += HEIGHT_TILE + 1;
-		console.log( "j" );
 	}
 
 	if( x_next < 0 ) x_next = 0;
@@ -636,39 +675,6 @@ function get_angle_kb( segment, player ) {
 	}
 }
 
-function contains_bullet( segment, bullet ) {
-	var dots = get_dots( segment );
-	var hdot = dots[ 0 ][ 0 ] * bullet.state.x + dots[ 0 ][ 1 ] * bullet.state.y;
-	var vdot = dots[ 1 ][ 0 ] * bullet.state.x + dots[ 1 ][ 1 ] * bullet.state.y;
-	return between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] );
-}
-
-function overlaps_player( segment, player ) {
-	var dots = get_dots( segment );
-	var hdot, vdot;
-	x_tl = player.state.x;
-	y_tl = player.state.y;
-	x_tr = player.state.x + WIDTH_PLAYER;
-	y_tr = player.state.y;
-	x_br = player.state.x + WIDTH_PLAYER;
-	y_br = player.state.y + HEIGHT_PLAYER;
-	x_bl = player.state.x;
-	y_bl = player.state.y + HEIGHT_PLAYER;
-	hdot = dots[ 0 ][ 0 ] * x_tl + dots[ 0 ][ 1 ] * y_tl;
-	vdot = dots[ 1 ][ 0 ] * x_tl + dots[ 1 ][ 1 ] * y_tl;
-	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
-	hdot = dots[ 0 ][ 0 ] * x_tr + dots[ 0 ][ 1 ] * y_tr;
-	vdot = dots[ 1 ][ 0 ] * x_tr + dots[ 1 ][ 1 ] * y_tr;
-	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
-	hdot = dots[ 0 ][ 0 ] * x_br + dots[ 0 ][ 1 ] * y_br;
-	vdot = dots[ 1 ][ 0 ] * x_br + dots[ 1 ][ 1 ] * y_br;
-	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
-	hdot = dots[ 0 ][ 0 ] * x_bl + dots[ 0 ][ 1 ] * y_bl;
-	vdot = dots[ 1 ][ 0 ] * x_bl + dots[ 1 ][ 1 ] * y_bl;
-	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
-	return false;
-}
-
 function update_bullet( ts, bullet ) {
 	if( bullet.state.last_update == -1 ) bullet.state.last_update = ts;
 
@@ -842,6 +848,9 @@ function draw_viewport() {
 	x_view = Math.round( me.player.state.x + HWIDTH_PLAYER - HWIDTH_VIEW );
 	y_view = Math.round( me.player.state.y + HHEIGHT_PLAYER - HHEIGHT_VIEW );
 	ctx_view.clearRect( 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
+	ctx_view.imageSmoothingEnabled = false;
+	ctx_view.drawImage( IMG_FOREST, x_view / WIDTH_MAP * HEIGHT_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_VIEW / WIDTH_MAP * HEIGHT_IMG_FOREST * 2.5, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
+	ctx_view.imageSmoothingEnabled = true;
 	ctx_view.drawImage( canvas_tile, -x_view, -y_view );
 	ctx_view.drawImage( canvas_ent, -x_view, -y_view );
 }
@@ -882,8 +891,8 @@ function draw_tile( x, y ) {
 		ty = y * HEIGHT_TILE;
 	if( get_tile( x, y ) == -1 ) return;
 	if( get_tile( x, y ) == 1 ) {
-		//ctx_tile.clearRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
-		ctx_tile.fillRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
+		ctx_tile.clearRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
+		//ctx_tile.fillRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
 		var left = get_tile( x - 1, y ) != 1,
 			right = get_tile( x + 1, y ) != 1;
 		if( left && right || !left && !right ) {
@@ -894,8 +903,8 @@ function draw_tile( x, y ) {
 			ctx_tile.drawImage( sprites.PLATFORM.img, WIDTH_TILE * 2, 0, WIDTH_TILE, HEIGHT_TILE, tx, ty, WIDTH_TILE, HEIGHT_TILE );
 		}
 	} else {
-		ctx_tile.fillStyle = "#FFFFFF";
-		ctx_tile.fillRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
+		//ctx_tile.fillStyle = "#FFFFFF";
+		//ctx_tile.fillRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
 	}
 }
 
@@ -946,19 +955,25 @@ function handle_keyup( evt ) {
 	me.keys[ evt.keyCode ] = false;
 }
 
+function callback_forest() {
+	window.requestAnimationFrame( game_loop );
+}
+
 function init_listeners() {
 	//ctx_tile.fillRect( 0, 0, WIDTH_MAP, HEIGHT_MAP );
 	me = new Me( activate_player() );
 	if( me != null ) {
-		canvas_view.addEventListener( "mousemove", handle_mousemove );
-		canvas_view.addEventListener( "mousedown", handle_mousedown );
-		canvas_view.addEventListener( "mouseup", handle_mouseup );
-		canvas_view.addEventListener( "contextmenu", handle_contextmenu );
+		hud.addEventListener( "mousemove", handle_mousemove );
+		hud.addEventListener( "mousedown", handle_mousedown );
+		hud.addEventListener( "mouseup", handle_mouseup );
+		hud.addEventListener( "contextmenu", handle_contextmenu );
 		document.addEventListener( "keydown", handle_keydown );
 		document.addEventListener( "keyup", handle_keyup );
 	}
 	init_segments( [ create_serpent( false, 0, 1, 20 ) ] );
-	window.requestAnimationFrame( game_loop );
+	IMG_FOREST.addEventListener( "load", callback_forest );
+	IMG_FOREST.addEventListener( "error", callback_forest );
+	IMG_FOREST.src = "assets/forest.png";
 }
 
 function draw_tiles() {

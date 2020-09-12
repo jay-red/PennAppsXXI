@@ -17,7 +17,8 @@ function init_sprites( callback_init, SCALE ) {
 		IMG_PLAYER_FLAP_R = new Image(),
 		IMG_CURSOR_VALID = new Image(),
 		IMG_CURSOR_INVALID = new Image(),
-		IMG_PLATFORM = new Image();
+		IMG_PLATFORM = new Image(),
+		IMG_FOREST = new Image();
 
 	var evt = {},
 		sprites = [],
