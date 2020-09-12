@@ -1,7 +1,7 @@
 var SCALE = 3;
 
-var SERPENT_ACCELERATION = 0.0003 * SCALE,
-	SERPENT_VELOCITY = 0.67 * SCALE;
+var SERPENT_ACCELERATION = 0.0002 * SCALE,
+	SERPENT_VELOCITY = 0.57 * SCALE;
 
 var BULLET_VELOCITY = 0.7 * SCALE;
 
@@ -11,11 +11,12 @@ var TERMINAL_VELOCITY = 0.5 * SCALE,
 var TERMINAL_RUNNING = 0.175 * SCALE,
 	RUNNING = 0.0007 * SCALE,
 	FRICTION = 0.0004 * SCALE,
-	JUMP = -.06 * SCALE;
+	JUMP = -.03 * SCALE;
 
 var KEY_A = 65,
 	KEY_D = 68,
 	KEY_Q = 81,
+	KEY_S = 83,
 	KEY_SPACE = 32,
 	KEY_ENTER = 13;
 
@@ -169,6 +170,8 @@ function Player( idx ) {
 	this.ready = false;
 	this.jumped = true;
 	this.jumping = false;
+	this.down = false;
+	this.dropped = false;
 	this.space = false;
 	//this.time_jump = 100;
 }
@@ -305,6 +308,7 @@ function update_me( ts ) {
 		down_q = key_down( KEY_Q ),
 		down_enter = key_down( KEY_ENTER );
 	me.player.space = key_down( KEY_SPACE );
+	me.player.down = key_down( KEY_S );
 	if( down_a && !down_d ) {
 		me.player.running = -1;
 	} else if( down_d && !down_a ) {
@@ -338,19 +342,32 @@ function update_me( ts ) {
 	me.player.left = ( a >= 90 ) && ( a <= 270 );
 	if( me.down_left ) {
 		if( me.building ) {
-			tiles[ me.y_tile ][ me.x_tile ] = 1;
-			draw_tile( me.x_tile, me.y_tile );
+			if( get_tile( me.x_tile, me.y_tile ) != -1 ) {
+				tiles[ me.y_tile ][ me.x_tile ] = 1;
+				draw_tile( me.x_tile - 1, me.y_tile );
+				draw_tile( me.x_tile, me.y_tile );
+				draw_tile( me.x_tile + 1, me.y_tile );
+			}
 		} else {
 			if( me.last_fired == -1 ) me.last_fired = ts - 200;
 			if( ts - me.last_fired >= 200 ) {
 				var bullet_idx = activate_bullet( me.idx );
 				var bullet = bullets[ me.idx ][ bullet_idx ];
-				bullet.state.x = me.player.state.x;
-				bullet.state.y = me.player.state.y;
+				bullet.state.x = me.player.state.x + HWIDTH_PLAYER;
+				bullet.state.y = me.player.state.y + HHEIGHT_PLAYER;
 				bullet.state.angle = a;
 				bullet.state.dx = BULLET_VELOCITY * ANGLES[ a ][ 1 ];
 				bullet.state.dy = BULLET_VELOCITY * ANGLES[ a ][ 2 ];
 				me.last_fired = ts;
+			}
+		}
+	} else if( me.down_right ) {
+		if( me.building ) {
+			if( get_tile( me.x_tile, me.y_tile ) != -1 ) {
+				tiles[ me.y_tile ][ me.x_tile ] = 0;
+				draw_tile( me.x_tile - 1, me.y_tile );
+				draw_tile( me.x_tile, me.y_tile );
+				draw_tile( me.x_tile + 1, me.y_tile );
 			}
 		}
 	}
@@ -359,6 +376,7 @@ function update_me( ts ) {
 function reset_jump( player ) {
 	player.jumped = false;
 	player.jumping = false;
+	player.dropped = false;
 }
 
 function update_player( ts, player ) {
@@ -367,6 +385,8 @@ function update_player( ts, player ) {
 
 	var x_last = player.state.x,
 		y_last = player.state.y;
+
+	var dy_last = player.state.dy;
 
 	var dx = player.state.dx, 
 		dy = player.state.dy;
@@ -382,6 +402,7 @@ function update_player( ts, player ) {
 	if( player.space && !player.jumped ) {
 		player.jumped = true;
 		player.jumping = true;
+		player.dropped = true;
 		dy += JUMP * ticks;
 		console.log( "j" );
 	} else if( player.space && !player.jumping ) {
@@ -396,13 +417,39 @@ function update_player( ts, player ) {
 	var x_next = player.state.x + dx * ticks,
 		y_next = player.state.y + dy * ticks;
 
+	if( player.down && !player.dropped && dy_last == 0 ) {
+		player.dropped = true;
+		y_last += HEIGHT_TILE + 1;
+		console.log( "j" );
+	}
+
 	if( x_next < 0 ) x_next = 0;
 	if( y_next < 0 ) y_next = 0;
 
 	if( x_next + WIDTH_PLAYER >= WIDTH_MAP ) x_next = WIDTH_MAP - WIDTH_PLAYER;
 	if( y_next + HEIGHT_PLAYER >= HEIGHT_MAP ) {
 		y_next = HEIGHT_MAP - HEIGHT_PLAYER;
+		dy = 0;
 		reset_jump( player );
+	}
+
+	if( dy > 0 ) {
+		var tx, ty, c = true;
+		var left_tile = Math.floor( x_next / WIDTH_TILE );
+		var right_tile = Math.floor( ( x_next + WIDTH_PLAYER - 1 ) / WIDTH_TILE );
+		var start_tile_y = Math.floor( ( y_last + HEIGHT_PLAYER - 1 ) / HEIGHT_TILE ) + 1;
+		var end_tile_y = Math.floor( ( y_next + HEIGHT_PLAYER ) / HEIGHT_TILE );
+		for( tx = left_tile; tx <= right_tile && c; ++tx ) {
+			for( ty = start_tile_y; ty <= end_tile_y; ++ty ) {
+				if( get_tile( tx, ty ) > 0 ) {
+					y_next = ( ty * HEIGHT_TILE - HEIGHT_PLAYER );
+					c = false;
+					dy = 0;
+					reset_jump( player );
+					break;
+				}
+			}
+		}
 	}
 
 	player.state.dx = dx;
@@ -710,10 +757,19 @@ function get_tile( x, y ) {
 function draw_tile( x, y ) {
 	var tx = x * WIDTH_TILE,
 		ty = y * HEIGHT_TILE;
-	if( get_tile( x, y ) > 0 ) {
-		ctx_tile.clearRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
-		ctx_tile.fillStyle="#000000";
+	if( get_tile( x, y ) == -1 ) return;
+	if( get_tile( x, y ) == 1 ) {
+		//ctx_tile.clearRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
 		ctx_tile.fillRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
+		var left = get_tile( x - 1, y ) != 1,
+			right = get_tile( x + 1, y ) != 1;
+		if( left && right || !left && !right ) {
+			ctx_tile.drawImage( sprites.PLATFORM.img, 0, 0, WIDTH_TILE, HEIGHT_TILE, tx, ty, WIDTH_TILE, HEIGHT_TILE );
+		} else if( left ) {
+			ctx_tile.drawImage( sprites.PLATFORM.img, WIDTH_TILE, 0, WIDTH_TILE, HEIGHT_TILE, tx, ty, WIDTH_TILE, HEIGHT_TILE );
+		} else if( right ) {
+			ctx_tile.drawImage( sprites.PLATFORM.img, WIDTH_TILE * 2, 0, WIDTH_TILE, HEIGHT_TILE, tx, ty, WIDTH_TILE, HEIGHT_TILE );
+		}
 	} else {
 		ctx_tile.fillStyle = "#FFFFFF";
 		ctx_tile.fillRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );

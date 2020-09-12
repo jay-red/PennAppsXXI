@@ -16,7 +16,8 @@ function init_sprites( callback_init, SCALE ) {
 		IMG_PLAYER_GLIDE_R = new Image(),
 		IMG_PLAYER_FLAP_R = new Image(),
 		IMG_CURSOR_VALID = new Image(),
-		IMG_CURSOR_INVALID = new Image();
+		IMG_CURSOR_INVALID = new Image(),
+		IMG_PLATFORM = new Image();
 
 	var evt = {},
 		sprites = [],
@@ -101,6 +102,8 @@ function init_sprites( callback_init, SCALE ) {
 
 	evt[ "CURSOR_VALID" ] = new Sprite( IMG_CURSOR_VALID, "assets/cursor_valid.png" );
 	evt[ "CURSOR_INVALID" ] = new Sprite( IMG_CURSOR_INVALID, "assets/cursor_invalid.png" );
+
+	evt[ "PLATFORM" ] = new Sprite( IMG_PLATFORM, "assets/platform.png" );
 
 	load_sprites();
 }
