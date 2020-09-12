@@ -42,8 +42,11 @@ var WIDTH_VIEW = 80 * WIDTH_TILE,
 	HWIDTH_VIEW = WIDTH_VIEW / 2,
 	HHEIGHT_VIEW = HEIGHT_VIEW / 2;
 
+//var WIDTH_IMG_FOREST = 800,
+//	HEIGHT_IMG_FOREST = 448;
+
 var WIDTH_IMG_FOREST = 800,
-	HEIGHT_IMG_FOREST = 448;
+	HEIGHT_IMG_FOREST = 320;
 
 var WIDTH_IMG_BULLET = 24 * SCALE,
 	HEIGHT_IMG_BULLET = 1 * SCALE;
@@ -492,10 +495,16 @@ function update_player( ts, player ) {
 		y_last += HEIGHT_TILE + 1;
 	}
 
-	if( x_next < 0 ) x_next = 0;
+	if( x_next < 0 ) {
+		x_next = 0;
+		dx = 0;
+	}
 	if( y_next < 0 ) y_next = 0;
 
-	if( x_next + WIDTH_PLAYER >= WIDTH_MAP ) x_next = WIDTH_MAP - WIDTH_PLAYER;
+	if( x_next + WIDTH_PLAYER >= WIDTH_MAP ) {
+		x_next = WIDTH_MAP - WIDTH_PLAYER;
+		dx = 0;
+	}
 	if( y_next + HEIGHT_PLAYER >= HEIGHT_MAP ) {
 		y_next = HEIGHT_MAP - HEIGHT_PLAYER;
 		dy = 0;
@@ -849,7 +858,8 @@ function draw_viewport() {
 	y_view = Math.round( me.player.state.y + HHEIGHT_PLAYER - HHEIGHT_VIEW );
 	ctx_view.clearRect( 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
 	ctx_view.imageSmoothingEnabled = false;
-	ctx_view.drawImage( IMG_FOREST, x_view / WIDTH_MAP * HEIGHT_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_VIEW / WIDTH_MAP * HEIGHT_IMG_FOREST * 2.5, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
+	ctx_view.drawImage( IMG_FOREST, x_view / WIDTH_MAP * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_VIEW / WIDTH_MAP * WIDTH_IMG_FOREST, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
+	//ctx_view.drawImage( IMG_FOREST, x_view / HEIGHT_MAP / 2.5 * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_VIEW / WIDTH_MAP * HEIGHT_IMG_FOREST * 2.5, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
 	ctx_view.imageSmoothingEnabled = true;
 	ctx_view.drawImage( canvas_tile, -x_view, -y_view );
 	ctx_view.drawImage( canvas_ent, -x_view, -y_view );
@@ -973,7 +983,8 @@ function init_listeners() {
 	init_segments( [ create_serpent( false, 0, 1, 20 ) ] );
 	IMG_FOREST.addEventListener( "load", callback_forest );
 	IMG_FOREST.addEventListener( "error", callback_forest );
-	IMG_FOREST.src = "assets/forest.png";
+	//IMG_FOREST.src = "assets/forest.png";
+	IMG_FOREST.src = "assets/forest_2.png";
 }
 
 function draw_tiles() {
