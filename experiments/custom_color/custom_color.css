@@ -49,7 +49,7 @@ body, html {
 	height: 70%;
 	border-style: solid;
 	border-radius: 15px;
-	border-color: magenta;
+	border-color: rgba(20, 20, 20, .5);
 	grid-template-columns: 1fr 1fr;
 	grid-gap: 16px;
 	place-items: center;

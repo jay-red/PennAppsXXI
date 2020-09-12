@@ -1,12 +1,14 @@
 
 
-function init_custom_pallete(color_num) {
+function init_custom_pallete(callback) {
 	var CANVAS = document.getElementById("sprite-canvas");
 	var CTX = CANVAS.getContext("2d");
 	var PALLETE = document.getElementById("color-pallete");
 	var REFRESH_BUTTON = document.getElementById("refresh-icon");
 	var NEXT_BUTTON = document.getElementById("color-next-button");
 	var COLOR_INPUT = document.getElementById('color-input');
+	var CANVAS_SCALE = .25;
+	var PALLETE_NUM = 8;
 	var SPRITE = {
 		asset_src: {
 			idle: {
@@ -20,6 +22,7 @@ function init_custom_pallete(color_num) {
 		},
 		curr_state: "idle",
 		asset: new Image(),
+		base: new Image(),
 		frame_count: 4,
 		frame_idx: 0,
 		w: 24,
@@ -31,40 +34,36 @@ function init_custom_pallete(color_num) {
 	};
 	var start;
 
-	function change_img_color(px_data, new_color, base_color, x, y, ctx) {
+	function change_img_color(px_data, new_color) {
 		let px_arr = px_data.data;
-		// let px_rep_count = 0;
 		for(let i = 0; i < px_arr.length; i += 4) {
 			if (px_arr[i + 3] == 0) continue;
 			for(let j = 0; j < 3; j++) {
-				let d_color = px_arr[i + j] - base_color[j];
-				px_arr[i + j] = (new_color[j] + d_color) % 255;
+				px_arr[i + j] = new_color[j];
 			}
-			// px_rep_count++;
 		}
-		px_data.data = px_arr;
-		ctx.putImageData(px_data, x, y);
-		// console.log("replaced " + px_rep_count);
+		return px_data;
 	}
 
 	// input: img: Image Object, new_color: [r, g, b], base_color: [r, g, b]
 	// output: canvas of img width and height w/ img placed at (0, 0)
-	function recolor_img(img, new_color, base_color) {
+	function recolor_img(img, new_color) {
 		var buffer = document.createElement("canvas");
 		var buff_ctx = buffer.getContext('2d');
 		buffer.width = img.width;
 		buffer.height = img.height;
 		buff_ctx.drawImage(img, 0, 0);
 		let buff_data = buff_ctx.getImageData(0, 0, img.width, img.height);
-		change_img_color(buff_data, new_color, base_color, 0, 0, buff_ctx);
-		// console.log("w: " + buffer.width + " | h: " + buffer.height);
+		let px_data = change_img_color(buff_data, new_color, 0, 0, buff_ctx);
+		buff_ctx.putImageData(px_data, 0, 0);
+		buff_ctx.globalCompositeOperation = "multiply";
+		buff_ctx.drawImage(img, 0, 0);
 		return buffer;
 	}
 
 	function change_sprite_color(new_color) {
 		let back_idx = SPRITE.color.length - 1;
-		let base_color = SPRITE.color[back_idx];
-		SPRITE.asset = recolor_img(SPRITE.asset, new_color, base_color);
+		SPRITE.asset = recolor_img(SPRITE.base, new_color);
 		SPRITE.color.push(new_color);
 	}
 
@@ -82,11 +81,16 @@ function init_custom_pallete(color_num) {
 		console.log(new_color);
 		console.log(this.style.backgroundColor);
 		change_sprite_color(new_color);
+		COLOR_INPUT.value = parse_rgb_to_hex_str(new_color);
+	}
 
-		// let px_data = CTX.getImageData(SPRITE.x, SPRITE.y, SPRITE.w, SPRITE.h);
-		// change_sprite_color(px_data, new_color, base_color, CTX);
+	function handle_next() {
+		var evt = {
+			color: SPRITE.color,
+			recolor: recolor_img
+		}
 
-		// render_sprite();
+		callback(evt);
 	}
 
 	function handle_input_change(e) {
@@ -97,6 +101,8 @@ function init_custom_pallete(color_num) {
 		if (COLOR_INPUT.value && parseInt(COLOR_INPUT.value, 16)) {
 			let new_color = parse_hex_to_rgb(COLOR_INPUT.value);
 			change_sprite_color(new_color);
+			NEXT_BUTTON.style.backgroundColor = "rgb(" + new_color[0] + ',' 
+				+ new_color[1] + ',' + new_color[2] + ")";
 		}
 	}
 
@@ -113,6 +119,7 @@ function init_custom_pallete(color_num) {
 
 	function set_listeners() {
 		REFRESH_BUTTON.addEventListener('click', handle_color_refresh);
+		NEXT_BUTTON.addEventListener('click', handle_next);
 		COLOR_INPUT.addEventListener('input', handle_input_change);
 		COLOR_INPUT.addEventListener('blur', handle_input_blur);
 		SPRITE.asset.addEventListener('load', handle_sprite_load);
@@ -153,11 +160,13 @@ function init_custom_pallete(color_num) {
 	}
 
 	function load_sprite() {
-		SPRITE.asset.src = "../assets/player_idle.png";
+		SPRITE.base.src = "../assets/player_idle.png";
+		SPRITE.asset.src = SPRITE.base.src;
 		console.log(CANVAS.width, CANVAS.height);
 	}
 
 	function set_canvas_aspect() {
+		CANVAS.height *= CANVAS_SCALE;
 		CANVAS.width = CANVAS.height * (CANVAS.clientWidth 
 			/ CANVAS.clientHeight);
 	}
@@ -165,28 +174,26 @@ function init_custom_pallete(color_num) {
 	set_listeners();
 	set_canvas_aspect();
 	load_sprite();
-	populate_pallete(color_num);
+	populate_pallete(PALLETE_NUM);
 
 }
 
-function randomize_color() {
-	let color = "";
+function randomize_color(to_hex) {
+	let color = [];
 	for(let i = 0; i < 3; i++) {
-		let val =  Math.floor(Math.random() * 256);
-		let str_val = val.toString(16);
-		if (val < 0x10) {
-			str_val = '0' + str_val;
-		}
-		color += str_val;
+		color.push(Math.floor(Math.random() * 256));
 	}
 	console.log(color);
+	if (to_hex) {
+		return parse_rgb_to_hex_str(color);
+	}
 	return color;
 }
 
 function randomize_pallete(num) {
 	let pallete = [];
 	for(let i = 0; i < num; i++) {
-		pallete.push(randomize_color());
+		pallete.push(randomize_color(true));
 	}
 	return pallete;
 }
@@ -202,10 +209,24 @@ function parse_rgb_str(rgb_str) {
 
 function parse_hex_to_rgb(hex_str) {
 	let rgb = [];
-	for(let i = 0; i < 3; i += 2) {
+	for(let i = 0; i < 6; i += 2) {
 		rgb.push(parseInt(hex_str.substring(i, i + 2), 16));
 	}
+	console.log(hex_str + rgb);
 	return rgb;
+}
+
+function parse_rgb_to_hex_str(rgb_arr) {
+	let hex_str = "";
+	for(let i = 0; i < 3; i++) {
+		let val =  rgb_arr[i];
+		let str_val = val.toString(16);
+		if (val < 0x10) {
+			str_val = '0' + str_val;
+		}
+		hex_str += str_val;
+	}
+	return hex_str;
 }
 
 
@@ -213,5 +234,5 @@ function parse_hex_to_rgb(hex_str) {
 
 
 window.addEventListener('load', function() {
-	init_custom_pallete(8);
+	init_custom_pallete(function(evt) { console.log("NEXT"); });
 });
