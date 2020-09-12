@@ -9,8 +9,8 @@ var TERMINAL_VELOCITY = 0.5 * SCALE,
 	GRAVITY = 0.0013 * SCALE;
 
 var TERMINAL_RUNNING = 0.175 * SCALE,
-	RUNNING = 0.0007 * SCALE,
-	FRICTION = 0.0004 * SCALE,
+	RUNNING = 0.0009 * SCALE,
+	FRICTION = 0.0006 * SCALE,
 	JUMP = -.03 * SCALE;
 
 var KEY_A = 65,
@@ -154,6 +154,7 @@ function Bullet( idx, power ) {
 	this.idx = idx;
 	this.power = power;
 	this.state = new EntityState();
+	this.hit = false;
 }
 
 function Player( idx ) {
@@ -244,6 +245,8 @@ function activate_bullet( pid ) {
 	if( append_bullet ) {
 		player_bullets.push( new Bullet( idx, POWER_FIRE ) );
 		bullet = player_bullets[ idx ];
+	} else {
+		bullet.state.last_update = -1;
 	}
 	bullet.state.active = true;
 	return idx;
@@ -385,6 +388,16 @@ function update_player( ts, player ) {
 
 	var x_last = player.state.x,
 		y_last = player.state.y;
+
+	var segment;
+	for( var i = 0; i < segments.length; ++i ) {
+		segment = segments[ i ];
+		if( segment.state.active && segment.alive ) {
+			if( overlaps_player( segment, player ) ) {
+				console.log( "conti" );
+			}
+		}
+	}
 
 	var dy_last = player.state.dy;
 
@@ -560,13 +573,84 @@ function update_body( ts, body ) {
     body.state.last_update = ts;
 }
 
+function between( pt, x1, x2 ) {
+	return pt >= x1 && pt <= x2 || pt >= x2 && pt <= x1;
+}
+
+function get_dots( segment ) {
+	var axis_horiz = [ ANGLES[ segment.state.angle ][ 1 ], ANGLES[ segment.state.angle ][ 2 ] ];
+	var axis_vert = [ ANGLES[ ( segment.state.angle + 90 ) % 360 ][ 1 ], ANGLES[ ( segment.state.angle + 90 ) % 360 ][ 2 ] ];
+	var width = WIDTH_BODY;
+	var hheight = HHEIGHT_BODY;
+	if( segment.is_head ) {
+		width = WIDTH_HEAD;
+		hheight = HHEIGHT_HEAD;
+	} else if( segment.is_tail ) {
+		width = WIDTH_TAIL;
+		hheight = HHEIGHT_TAIL;
+	}
+	var tl = [ segment.state.x + ( axis_horiz[ 1 ] * hheight ), segment.state.y - ( axis_horiz[ 0 ] * hheight ) ];
+	var br = [ segment.state.x + ( axis_horiz[ 0 ] * width ) - ( axis_horiz[ 1 ] * hheight ), segment.state.y + ( axis_horiz[ 0 ] * hheight ) + ( axis_horiz[ 1 ] * width ) ];
+	var hdotl = tl[ 0 ] * axis_horiz[ 0 ] + tl[ 1 ] * axis_horiz[ 1 ];
+	var hdotr = br[ 0 ] * axis_horiz[ 0 ] + br[ 1 ] * axis_horiz[ 1 ];
+	var vdott = tl[ 0 ] * axis_vert[ 0 ] + tl[ 1 ] * axis_vert[ 1 ];
+	var vdotb = br[ 0 ] * axis_vert[ 0 ] + br[ 1 ] * axis_vert[ 1 ];
+	return [ axis_horiz, axis_vert, hdotl, hdotr, vdott, vdotb ];
+}
+
+function contains_bullet( segment, bullet ) {
+	var dots = get_dots( segment );
+	var hdot = dots[ 0 ][ 0 ] * bullet.state.x + dots[ 0 ][ 1 ] * bullet.state.y;
+	var vdot = dots[ 1 ][ 0 ] * bullet.state.x + dots[ 1 ][ 1 ] * bullet.state.y;
+	return between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] );
+}
+
+function overlaps_player( segment, player ) {
+	var dots = get_dots( segment );
+	var hdot, vdot;
+	x_tl = player.state.x;
+	y_tl = player.state.y;
+	x_tr = player.state.x + WIDTH_PLAYER;
+	y_tr = player.state.y;
+	x_br = player.state.x + WIDTH_PLAYER;
+	y_br = player.state.y + HEIGHT_PLAYER;
+	x_bl = player.state.x;
+	y_bl = player.state.y + HEIGHT_PLAYER;
+	hdot = dots[ 0 ][ 0 ] * x_tl + dots[ 0 ][ 1 ] * y_tl;
+	vdot = dots[ 1 ][ 0 ] * x_tl + dots[ 1 ][ 1 ] * y_tl;
+	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
+	hdot = dots[ 0 ][ 0 ] * x_tr + dots[ 0 ][ 1 ] * y_tr;
+	vdot = dots[ 1 ][ 0 ] * x_tr + dots[ 1 ][ 1 ] * y_tr;
+	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
+	hdot = dots[ 0 ][ 0 ] * x_br + dots[ 0 ][ 1 ] * y_br;
+	vdot = dots[ 1 ][ 0 ] * x_br + dots[ 1 ][ 1 ] * y_br;
+	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
+	hdot = dots[ 0 ][ 0 ] * x_bl + dots[ 0 ][ 1 ] * y_bl;
+	vdot = dots[ 1 ][ 0 ] * x_bl + dots[ 1 ][ 1 ] * y_bl;
+	if( between( hdot, dots[ 2 ], dots[ 3 ] ) && between( vdot, dots[ 4 ], dots[ 5 ] ) ) return true;
+	return false;
+}
+
 function update_bullet( ts, bullet ) {
 	if( bullet.state.last_update == -1 ) bullet.state.last_update = ts;
 
 	var ticks = ts - bullet.state.last_update;
 
+	if( bullet.state.x < 0 ) bullet.state.active = false;
+	else if( bullet.state.x >= WIDTH_MAP ) bullet.state.active = false;
+	if( bullet.state.y < 0 ) bullet.state.active = false;
+	else if( bullet.state.y >= HEIGHT_MAP ) bullet.state.active = false;
 	bullet.state.x += bullet.state.dx * ticks;
 	bullet.state.y += bullet.state.dy * ticks;
+
+	var segment;
+	for( var i = 0; i < segments.length; ++i ) {
+		segment = segments[ i ];
+		if( contains_bullet( segment, bullet ) ) {
+			bullet.state.active = false;
+			break;
+		}
+	}
 
 	bullet.state.last_update = ts;
 }
@@ -619,6 +703,7 @@ function draw_bullets() {
 		player_bullets = bullets[ j ];
 		for( i = 0; i < player_bullets.length; ++i ) {
 			bullet = player_bullets[ i ];
+			if( !bullet.state.active ) continue;
 			switch( bullet.power ) {
 				case POWER_ICE:
 					img = sprites.BULLET_ICE.img;
