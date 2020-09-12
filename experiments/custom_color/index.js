@@ -24,23 +24,40 @@ function init_custom_pallete(color_num) {
 		frame_idx: 0,
 		w: 24,
 		h: 24,
-		x: 0,
-		y: 0,
+		x: 10,
+		y: 10,
+		scale: 3,
 		color: [[212, 212, 212]]
 	};
 	var start;
 
-	// input: img: Image Object, new_color: [r, g, b]
+	function change_sprite_color(px_data, new_color, base_color, x, y, ctx) {
+		let px_arr = px_data.data;
+		// let px_rep_count = 0;
+		for(let i = 0; i < px_arr.length; i += 4) {
+			if (px_arr[i + 3] == 0) continue;
+			for(let j = 0; j < 3; j++) {
+				let d_color = px_arr[i + j] - base_color[j];
+				px_arr[i + j] = (new_color[j] + d_color) % 255;
+			}
+			// px_rep_count++;
+		}
+		px_data.data = px_arr;
+		ctx.putImageData(px_data, x, y);
+		// console.log("replaced " + px_rep_count);
+	}
+
+	// input: img: Image Object, new_color: [r, g, b], base_color: [r, g, b]
 	// output: canvas of img width and height w/ img placed at (0, 0)
-	function recolor_img(img, new_color) {
+	function recolor_img(img, new_color, base_color) {
 		var buffer = document.createElement("canvas");
 		var buff_ctx = buffer.getContext('2d');
 		buffer.width = img.width;
 		buffer.height = img.height;
 		buff_ctx.drawImage(img, 0, 0);
 		let buff_data = buff_ctx.getImageData(0, 0, img.width, img.height);
-		change_sprite_color(buff_data, new_color, buff_ctx);
-		console.log("w: " + buffer.width + " | h: " + buffer.height);
+		change_sprite_color(buff_data, new_color, base_color, 0, 0, buff_ctx);
+		// console.log("w: " + buffer.width + " | h: " + buffer.height);
 		return buffer;
 	}
 
@@ -62,8 +79,11 @@ function init_custom_pallete(color_num) {
 		let new_color = parse_rgb_str(this.style.backgroundColor);
 		console.log(new_color);
 		console.log(this.style.backgroundColor);
+		let back_idx = SPRITE.color.length - 1;
+		base_color = SPRITE.color[back_idx];
+
 		// let px_data = CTX.getImageData(SPRITE.x, SPRITE.y, SPRITE.w, SPRITE.h);
-		// change_sprite_color(px_data, new_color, CTX);
+		// change_sprite_color(px_data, new_color, base_color, CTX);
 
 		// get_buffer_asset_output(new_color);
 		// let curr_src = SPRITE.asset_src[SPRITE.curr_state].src;
@@ -72,7 +92,8 @@ function init_custom_pallete(color_num) {
 		// buff_img.src = curr_src[curr_src.length - 1];
 		// buff_img.addEventListener('load', handle_buffer_load);
 
-		SPRITE.asset = recolor_img(SPRITE.asset, new_color);
+		SPRITE.asset = recolor_img(SPRITE.asset, new_color, base_color);
+		SPRITE.color.push(new_color);
 		// render_sprite();
 	}
 
@@ -132,24 +153,6 @@ function init_custom_pallete(color_num) {
 	function load_sprite() {
 		SPRITE.asset.src = "../assets/player_idle.png";
 		console.log(CANVAS.width, CANVAS.height);
-	}
-
-	function change_sprite_color(px_data, new_color, ctx) {
-		let px_arr = px_data.data;
-		let px_rep_count = 0;
-		let back_idx = SPRITE.color.length - 1;
-		for(let i = 0; i < px_arr.length; i += 4) {
-			if (px_arr[i + 3] == 0) continue;
-			for(let j = 0; j < 3; j++) {
-				let d_color = px_arr[i + j] - SPRITE.color[back_idx][j];
-				px_arr[i + j] = (new_color[j] + d_color) % 255;
-			}
-			px_rep_count++;
-		}
-		SPRITE.color.push(new_color);
-		px_data.data = px_arr;
-		ctx.putImageData(px_data, SPRITE.x, SPRITE.y);
-		console.log("replaced " + px_rep_count);
 	}
 
 	function set_canvas_aspect() {
