@@ -31,11 +31,11 @@ function init_sprites( callback_init, SCALE ) {
 			for( var i = 0; i < entries.length; ++i ) {
 				value = entries[ i ][ 1 ];
 				tmp = document.createElement( "canvas" );
-				tmp.width = value.img.width;
-				tmp.height = value.img.height;
+				tmp.width = value.img.width * SCALE;
+				tmp.height = value.img.height * SCALE;
 				tmp_ctx = tmp.getContext( "2d" );
 				tmp_ctx.imageSmoothingEnabled = false;
-				tmp_ctx.drawImage( value.img, 0, 0 );
+				tmp_ctx.drawImage( value.img, 0, 0, tmp.width, tmp.height );
 				value.img = tmp;
 			}
 		}
