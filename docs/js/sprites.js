@@ -14,7 +14,9 @@ function init_sprites( callback_init, SCALE ) {
 		IMG_PLAYER_RUN_R = new Image(),
 		IMG_PLAYER_IDLE_R = new Image(),
 		IMG_PLAYER_GLIDE_R = new Image(),
-		IMG_PLAYER_FLAP_R = new Image();;
+		IMG_PLAYER_FLAP_R = new Image(),
+		IMG_CURSOR_VALID = new Image(),
+		IMG_CURSOR_INVALID = new Image();
 
 	var evt = {},
 		sprites = [],
@@ -96,6 +98,9 @@ function init_sprites( callback_init, SCALE ) {
 	evt[ "PLAYER_IDLE_R" ] = new Sprite( IMG_PLAYER_IDLE_R, "assets/player_idle_r.png" );
 	evt[ "PLAYER_GLIDE_R" ] = new Sprite( IMG_PLAYER_GLIDE_R, "assets/player_glide_r.png" );
 	evt[ "PLAYER_FLAP_R" ] = new Sprite( IMG_PLAYER_FLAP_R, "assets/player_flap_r.png" );
+
+	evt[ "CURSOR_VALID" ] = new Sprite( IMG_CURSOR_VALID, "assets/cursor_valid.png" );
+	evt[ "CURSOR_INVALID" ] = new Sprite( IMG_CURSOR_INVALID, "assets/cursor_invalid.png" );
 
 	load_sprites();
 }

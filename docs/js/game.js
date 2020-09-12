@@ -3,6 +3,8 @@ var SCALE = 3;
 var SERPENT_ACCELERATION = 0.0003 * SCALE,
 	SERPENT_VELOCITY = 0.67 * SCALE;
 
+var BULLET_VELOCITY = 0.5 * SCALE;
+
 var TERMINAL_VELOCITY = 0.5 * SCALE,
 	GRAVITY = 0.0013 * SCALE;
 
@@ -32,6 +34,9 @@ var WIDTH_VIEW = 80 * WIDTH_TILE,
 	HEIGHT_VIEW = WIDTH_VIEW * window.screen.height / window.screen.width,
 	HWIDTH_VIEW = WIDTH_VIEW / 2,
 	HHEIGHT_VIEW = HEIGHT_VIEW / 2;
+
+var WIDTH_IMG_BULLET = 24 * SCALE,
+	HEIGHT_IMG_BULLET = 1 * SCALE;
 
 var WIDTH_IMG_SERPENT = 32 * SCALE,
 	HEIGHT_IMG_SERPENT = 32 * SCALE,
@@ -65,8 +70,8 @@ var ANGLES = [];
 function init_angles() {
 	for( var i = 0; i < 360; ++i ) {
 		ANGLES.push( [ i / 180 * Math.PI ] );
-		ANGLES[ i ].push( Math.cos( ANGLES[ i * 3 ] ) );
-		ANGLES[ i ].push( Math.sin( ANGLES[ i * 3 ] ) );
+		ANGLES[ i ].push( Math.cos( ANGLES[ i ][ 0 ] ) );
+		ANGLES[ i ].push( Math.sin( ANGLES[ i ][ 0 ] ) );
 	}
 }
 
@@ -86,9 +91,7 @@ var tiles = [],
 	canvas_tile = document.createElement( "canvas" ),
 	ctx_tile = null,
 	canvas_ent = document.createElement( "canvas" ),
-	ctx_ent = null,
-	x_mouse = 0,
-	y_mouse = 0;
+	ctx_ent = null;
 
 canvas_tile.width = WIDTH_MAP;
 canvas_tile.height = HEIGHT_MAP;
@@ -142,8 +145,9 @@ function SerpentBody( idx, idx_head, split, power, ai ) {
 	this.ai = ai;
 }
 
-function Bullet( idx ) {
+function Bullet( idx, power ) {
 	this.idx = idx;
+	this.power = power;
 	this.state = new EntityState();
 }
 
@@ -164,6 +168,14 @@ function Me( idx ) {
 	this.player = players[ idx ];
 	this.keys = {};
 	this.last_update = -1;
+	this.down_left = false;
+	this.down_right = false;
+	this.down_mid = false;
+	this.x_mouse = 0;
+	this.y_mouse = 0;
+	this.x_tile = 0;
+	this.y_tile = 0;
+	this.last_fired = -1;
 }
 
 function key_down( key ) {
@@ -172,7 +184,7 @@ function key_down( key ) {
 
 var players = [];
 var segments = [];
-var bullets = [ [], [], [], [] ];
+var bullets = [];
 var me = null;
 
 function activate_player() {
@@ -190,6 +202,7 @@ function activate_player() {
 	}
 	if( append_player ) {
 		players.push( new Player( idx ) );
+		bullets.push( [] );
 		player = players[ idx ];
 	}
 	player.state.active = true;
@@ -212,15 +225,19 @@ function activate_bullet( pid ) {
 		}
 	}
 	if( append_bullet ) {
-		player_bullets.push( new Bullet( idx ) );
+		player_bullets.push( new Bullet( idx, POWER_FIRE ) );
 		bullet = player_bullets[ idx ];
 	}
 	bullet.state.active = true;
 	return idx;
 }
 
-function active_boss() {
-
+function activate_boss() {
+	var segment;
+	for( var i = 0; i < segments.length; ++i ) {
+		segment = segments[ i ];
+		segment.state.active = true;
+	}
 }
 
 function init_segments( serpents ) {
@@ -275,6 +292,26 @@ function update_me( ts ) {
 		me.player.running = 1;
 	} else {
 		me.player.running = 0;
+	}
+	me.x_tile = ( ( x_view + me.x_mouse ) / WIDTH_TILE ) | 0;
+	me.y_tile = ( ( y_view + me.y_mouse ) / HEIGHT_TILE ) | 0;
+	var mx = me.x_mouse - HWIDTH_VIEW;
+	var my = me.y_mouse - HHEIGHT_VIEW;
+	var a = Math.atan2( my, mx );
+	while( a < 0 ) a += Math.PI * 2;
+	a = ( ( a / Math.PI * 180 ) | 0 ) % 360;
+	if( me.down_left ) {
+		if( me.last_fired == -1 ) me.last_fired = ts;
+		if( ts - me.last_fired > 200 ) {
+			var bullet_idx = activate_bullet( me.idx );
+			var bullet = bullets[ me.idx ][ bullet_idx ];
+			bullet.state.x = me.player.state.x;
+			bullet.state.y = me.player.state.y;
+			bullet.state.angle = a;
+			bullet.state.dx = BULLET_VELOCITY * ANGLES[ a ][ 1 ];
+			bullet.state.dy = BULLET_VELOCITY * ANGLES[ a ][ 2 ];
+			me.last_fired = ts;
+		}
 	}
 }
 
@@ -409,7 +446,14 @@ function update_body( ts, body ) {
 }
 
 function update_bullet( ts, bullet ) {
+	if( bullet.state.last_update == -1 ) bullet.state.last_update = ts;
 
+	var ticks = ts - bullet.state.last_update;
+
+	bullet.state.x += bullet.state.dx * ticks;
+	bullet.state.y += bullet.state.dy * ticks;
+
+	bullet.state.last_update = ts;
 }
 
 function update_players( ts ) {
@@ -426,7 +470,7 @@ function update_segments( ts ) {
 	var segment;
 	for( var i = 0; i < segments.length; ++i ) {
 		segment = segments[ i ];
-		if( segment.active = true ) {
+		if( segment.active ) {
 			if( segment.is_head ) {
 				update_head( ts, segment );
 			} else {
@@ -437,11 +481,48 @@ function update_segments( ts ) {
 }
 
 function update_bullets( ts ) {
-	var bullet;
-	for( var i = 0; i < bullets.length; ++i ) {
-		bullet = bullets[ i ];
-		if( bullet.active )		 {
-			update_bullet( ts, bullet );
+	var bullet,
+		player_bullets,
+		i;
+	for( var j = 0; j < bullets.length; ++j ) {
+		player_bullets = bullets[ j ];
+		for( i = 0; i < player_bullets.length; ++i ) {
+			bullet = player_bullets[ i ];
+			if( bullet.state.active ) {
+				update_bullet( ts, bullet );
+			}
+		}
+	}
+}
+
+function draw_bullets() {
+	var player_bullets,
+		bullet,
+		img,
+		i;
+	for( var j = 0; j < bullets.length; ++j ) {
+		player_bullets = bullets[ j ];
+		for( i = 0; i < player_bullets.length; ++i ) {
+			bullet = player_bullets[ i ];
+			switch( bullet.power ) {
+				case POWER_ICE:
+					img = sprites.BULLET_ICE.img;
+					break;
+				case POWER_EARTH:
+					img = sprites.BULLET_EARTH.img;
+					break;
+				case POWER_FIRE:
+					img = sprites.BULLET_FIRE.img;
+					break;
+				case POWER_AIR:
+					img = sprites.BULLET_AIR.img;
+					break;
+			}
+			ctx_ent.translate( bullet.state.x, bullet.state.y );
+			ctx_ent.rotate( ANGLES[ bullet.state.angle ][ 0 ] );
+			ctx_ent.drawImage( img, 0, 0 );
+			//ctx_view.fillRect( 0, 0, 32, 32 );
+			ctx_ent.setTransform( 1, 0, 0, 1, 0, 0 );
 		}
 	}
 }
@@ -527,14 +608,21 @@ function draw_viewport() {
 	ctx_view.drawImage( canvas_ent, -x_view, -y_view );
 }
 
+function draw_me() {
+	if( me == null ) return;
+	ctx_ent.drawImage( sprites.CURSOR_VALID.img, me.x_tile * WIDTH_TILE, me.y_tile * HEIGHT_TILE );
+}
+
 function game_loop( ts ) {
 	ctx_ent.clearRect( 0, 0, WIDTH_MAP, HEIGHT_MAP );
 	update_me( ts );
 	update_segments( ts );
 	update_players( ts );
-	update_bullet( ts );
+	update_bullets( ts );
+	draw_bullets();
 	draw_players( ts );
 	draw_segments();
+	draw_me();
 	draw_viewport();
 	window.requestAnimationFrame( game_loop );
 }
@@ -552,17 +640,53 @@ function get_tile( x, y ) {
 function draw_tile( x, y ) {
 	var tx = x * WIDTH_TILE,
 		ty = y * HEIGHT_TILE;
-	if( get_tile( x, y ) > 1 || true ) {
+	if( get_tile( x, y ) > 1 ) {
 		ctx_tile.clearRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
 		//ctx_tile.fillStyle="#FFFFFF";
+		//ctx_tile.fillRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
+	} else {
+		ctx_tile.fillStyle = "#FFFFFF";
 		ctx_tile.fillRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
 	}
 }
 
 function handle_mousemove( evt ) {
 	var rect = canvas_view.getBoundingClientRect();
-	x_mouse = evt.clientX - rect.left;
-	y_mouse = evt.clientY - rect.top;
+	me.x_mouse = ( evt.clientX - rect.left ) * WIDTH_VIEW / rect.width;
+	me.y_mouse = ( evt.clientY - rect.top ) * HEIGHT_VIEW / rect.height;
+}
+
+function handle_mousedown( evt ) {
+	switch( evt.which ) {
+		case 1: // left
+			me.down_left = true;
+			break;
+		case 2: // middle
+			me.down_mid = true;
+			break;
+		case 3: // right
+			me.down_right = true;
+			break;
+	}
+}
+
+function handle_mouseup( evt ) {
+	switch( evt.which ) {
+		case 1: // left
+			me.down_left = false;
+			break;
+		case 2: // middle
+			me.down_mid = false;
+			break;
+		case 3: // right
+			me.down_right = false;
+			break;
+	}
+}
+
+function handle_contextmenu( evt ) {
+	evt.preventDefault();
+	return false;
 }
 
 function handle_keydown( evt ) {
@@ -575,9 +699,12 @@ function handle_keyup( evt ) {
 
 function init_listeners() {
 	//ctx_tile.fillRect( 0, 0, WIDTH_MAP, HEIGHT_MAP );
-	canvas_view.addEventListener( "mousemove", handle_mousemove );
 	me = new Me( activate_player() );
 	if( me != null ) {
+		canvas_view.addEventListener( "mousemove", handle_mousemove );
+		canvas_view.addEventListener( "mousedown", handle_mousedown );
+		canvas_view.addEventListener( "mouseup", handle_mouseup );
+		canvas_view.addEventListener( "contextmenu", handle_contextmenu );
 		document.addEventListener( "keydown", handle_keydown );
 		document.addEventListener( "keyup", handle_keyup );
 	}
