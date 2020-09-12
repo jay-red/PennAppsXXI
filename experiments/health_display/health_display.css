@@ -1,0 +1,54 @@
+body, html {
+	margin: 0;
+}
+
+#boss-div {
+	width: 100%;
+}
+
+.pixelate {
+	-ms-interpolation-mode: nearest-neighbor;
+	image-rendering: -webkit-optimize-contrast;
+	image-rendering: optimizeSpeed;
+	image-rendering: -o-crisp-edges;
+	image-rendering: -moz-crisp-edges;	
+	image-rendering: pixelated;
+}
+
+.health-bar {
+	margin: auto;
+	width: 80%;
+	position: relative;
+}
+
+.health-bar-frame {
+	width: 100%;
+	position: relative;
+	left: 0;
+	top: 0;
+}
+
+.health-bar-shade {
+	width: 100%;
+	position: absolute;
+	left: 0;
+	top: 0;
+	mix-blend-mode: multiply;
+}
+
+.health-bar-gauge {
+    background-color: grey;
+    width: 80%;
+    height: 58%;
+    position: absolute;
+    left: 10%;
+    top: 19.5%;
+}
+
+.health-bar-hp {
+	background-color: red;
+	height: 100%;
+	width: 80%;
+}
+
+
