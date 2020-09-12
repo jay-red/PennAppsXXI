@@ -3,11 +3,34 @@ var SCALE = 3;
 var TWIDTH_MAP = 240,
 	THEIGHT_MAP = 96;
 
-var WIDTH_TILE = 8,
-	HEIGHT_TILE = 8;
+var WIDTH_TILE = 8 * SCALE,
+	HEIGHT_TILE = 8 * SCALE;
 
-var WIDTH_MAP = TWIDTH_MAP * WIDTH_TILE * SCALE,
-	HEIGHT_MAP = TWIDTH_MAP * WIDTH_TILE * SCALE;
+var WIDTH_MAP = TWIDTH_MAP * WIDTH_TILE,
+	HEIGHT_MAP = TWIDTH_MAP * WIDTH_TILE;
+
+var WIDTH_HEAD = 23 * SCALE,
+	HEIGHT_HEAD = 12 * SCALE,
+	HHEIGHT_HEAD = 6 * SCALE;
+
+var WIDTH_BODY = 32 * SCALE,
+	HEIGHT_BODY = 12 * SCALE,
+	HWIDTH_BODY = 16 * SCALE,
+	HHEIGHT_BODY = 6 * SCALE;
+
+var OFFSET_TAIL_X = 9 * SCALE;
+
+var ANGLES = [];
+
+function init_angles() {
+	for( var i = 0; i < 360; ++i ) {
+		ANGLES.push( [ i / 180 * Math.PI ] );
+		ANGLES[ i ].push( Math.cos( ANGLES[ i * 3 ] ) );
+		ANGLES[ i ].push( Math.sin( ANGLES[ i * 3 ] ) );
+	}
+}
+
+init_angles();
 
 var tiles = [],
 	sprites = null,
@@ -183,9 +206,9 @@ function game_loop( ts ) {
 	update_segments( ts );
 	update_players( ts );
 	update_bullet( ts );
-	draw_bullets();
-	draw_players();
-	draw_segments();
+	//draw_bullets();
+	//draw_players();
+	//draw_segments();
 	window.requestAnimationFrame( game_loop );
 }
 
@@ -203,7 +226,7 @@ function draw_tile( x, y ) {
 	var tx = x * WIDTH_TILE,
 		ty = y * HEIGHT_TILE;
 	if( get_tile( x, y ) > 1 ) {
-		ctx_tile.clearRect( tx * SCALE, ty * SCALE, WIDTH_TILE * SCALE, HEIGHT_TILE * SCALE );
+		ctx_tile.clearRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
 	}
 }
 
