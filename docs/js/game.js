@@ -55,6 +55,10 @@ function Player( idx ) {
 	this.alive = false;
 }
 
+function Me( idx ) {
+	this.idx = idx;
+}
+
 var players = [ new Player( 0 ), new Player( 1 ), new Player( 2 ), new Player( 3 ) ];
 var segments = [];
 var bullets = [ [], [], [], [] ];
@@ -146,21 +150,42 @@ function update_bullet( ts, bullet ) {
 }
 
 function update_players( ts ) {
-
+	var player;
+	for( var i = 0; i < players.length; ++i ) {
+		player = players[ i ];
+		if( player.active ) {
+			update_player( ts, player );
+		}
+	}
 }
 
 function update_segments( ts ) {
-
+	var segment;
+	for( var i = 0; i < segments.length; ++i ) {
+		segment = segments[ i ];
+		if( segment.active )		 {
+			update_segment( ts, segment );
+		}
+	}
 }
 
 function update_bullets( ts ) {
-
+	var bullet;
+	for( var i = 0; i < bullets.length; ++i ) {
+		bullet = bullets[ i ];
+		if( bullet.active )		 {
+			update_bullet( ts, bullet );
+		}
+	}
 }
 
 function game_loop( ts ) {
-	update_players( ts );
 	update_segments( ts );
+	update_players( ts );
 	update_bullet( ts );
+	draw_bullets();
+	draw_players();
+	draw_segments();
 	window.requestAnimationFrame( game_loop );
 }
 
