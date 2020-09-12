@@ -24,3 +24,10 @@ function Bullet() {
 function Player() {
 	this.state = new EntityState();
 }
+
+function placeholder( evt ) {
+	console.log( evt );
+	console.log( "initialized" )
+}
+
+init_sprites( placeholder );
