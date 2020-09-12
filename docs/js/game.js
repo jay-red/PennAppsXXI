@@ -11,7 +11,8 @@ var TERMINAL_VELOCITY = 0.5 * SCALE,
 var TERMINAL_RUNNING = 0.175 * SCALE,
 	RUNNING = 0.0009 * SCALE,
 	FRICTION = 0.0006 * SCALE,
-	JUMP = -.03 * SCALE;
+	JUMP = -.48 * SCALE,
+	KNOCKBACK = 0.25 * SCALE;
 
 var KEY_A = 65,
 	KEY_D = 68,
@@ -174,6 +175,7 @@ function Player( idx ) {
 	this.down = false;
 	this.dropped = false;
 	this.space = false;
+	this.hit = false;
 	//this.time_jump = 100;
 }
 
@@ -193,6 +195,7 @@ function Me( idx ) {
 	this.readied = 0;
 	this.building = true;
 	this.switched = false;
+	this.invulnerable = 0;
 }
 
 function key_down( key ) {
@@ -306,6 +309,9 @@ function create_serpent( split, power, ai, length ) {
 
 function update_me( ts ) {
 	if( me == null ) return;
+	if( me.last_update == -1 ) me.last_update = ts;
+	var ticks = ts - me.last_update;
+	if( me.invulnerable > 0 ) me.invulnerable -= ticks;
 	var down_a = key_down( KEY_A ),
 		down_d = key_down( KEY_D ),
 		down_q = key_down( KEY_Q ),
@@ -327,6 +333,25 @@ function update_me( ts ) {
 			console.log( "boss" )
 		} else if( me.readied == 1 && !down_enter ) {
 			me.readied = 0;
+		}
+	} else if( me.invulnerable <= 0 ){
+		var segment,
+		hit = null;
+		for( var i = 0; i < segments.length; ++i ) {
+			segment = segments[ i ];
+			if( segment.state.active && segment.alive ) {
+				if( overlaps_player( segment, me.player ) ) {
+					hit = segment;
+					break;
+				}
+			}
+		}
+		if( hit ) {
+			var angle_kb = get_angle_kb( segment, me.player );
+			me.player.state.dx = ANGLES[ angle_kb ][ 1 ] * KNOCKBACK;
+			me.player.state.dy = ANGLES[ angle_kb ][ 2 ] * KNOCKBACK;
+			me.player.hit = true;
+			me.invulnerable = 600;
 		}
 	}
 	if( ( !me.switched ) && down_q ) {
@@ -374,6 +399,7 @@ function update_me( ts ) {
 			}
 		}
 	}
+	me.last_update = ts;
 }
 
 function reset_jump( player ) {
@@ -388,16 +414,6 @@ function update_player( ts, player ) {
 
 	var x_last = player.state.x,
 		y_last = player.state.y;
-
-	var segment;
-	for( var i = 0; i < segments.length; ++i ) {
-		segment = segments[ i ];
-		if( segment.state.active && segment.alive ) {
-			if( overlaps_player( segment, player ) ) {
-				console.log( "conti" );
-			}
-		}
-	}
 
 	var dy_last = player.state.dy;
 
@@ -416,7 +432,7 @@ function update_player( ts, player ) {
 		player.jumped = true;
 		player.jumping = true;
 		player.dropped = true;
-		dy += JUMP * ticks;
+		dy += JUMP;
 		console.log( "j" );
 	} else if( player.space && !player.jumping ) {
 
@@ -430,7 +446,8 @@ function update_player( ts, player ) {
 	var x_next = player.state.x + dx * ticks,
 		y_next = player.state.y + dy * ticks;
 
-	if( player.down && !player.dropped && dy_last == 0 ) {
+	if( ( player.down && !player.dropped || player.hit ) && dy_last == 0 ) {
+		player.hit = false;
 		player.dropped = true;
 		y_last += HEIGHT_TILE + 1;
 		console.log( "j" );
@@ -596,6 +613,27 @@ function get_dots( segment ) {
 	var vdott = tl[ 0 ] * axis_vert[ 0 ] + tl[ 1 ] * axis_vert[ 1 ];
 	var vdotb = br[ 0 ] * axis_vert[ 0 ] + br[ 1 ] * axis_vert[ 1 ];
 	return [ axis_horiz, axis_vert, hdotl, hdotr, vdott, vdotb ];
+}
+
+function get_angle_kb( segment, player ) {
+	var angle_kb = ( segment.state.angle + 90 ) % 360;
+	var axis_vert = [ ANGLES[ angle_kb ][ 1 ], ANGLES[ ( angle_kb ) % 360 ][ 2 ] ];
+	var hwidth = HWIDTH_BODY;
+	var hheight = HHEIGHT_BODY;
+	if( segment.is_head ) {
+		hwidth = HWIDTH_HEAD;
+		hheight = HHEIGHT_HEAD;
+	} else if( segment.is_tail ) {
+		hwidth = HWIDTH_TAIL;
+		hheight = HHEIGHT_TAIL;
+	}
+	var middot = segment.state.x * axis_vert[ 0 ] + segment.state.y * axis_vert[ 1 ];
+	var pdot = ( player.state.x + HWIDTH_PLAYER ) * axis_vert[ 0 ] + ( player.state.y + HHEIGHT_BODY ) * axis_vert[ 1 ];
+	if( pdot >= middot ) {
+		return angle_kb;
+	} else {
+		return ( angle_kb + 180 ) % 360;
+	}
 }
 
 function contains_bullet( segment, bullet ) {
