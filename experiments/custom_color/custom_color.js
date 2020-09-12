@@ -24,14 +24,14 @@ function init_custom_pallete(color_num) {
 		frame_idx: 0,
 		w: 24,
 		h: 24,
-		x: 10,
-		y: 10,
-		scale: 3,
+		x: 0,
+		y: 0,
+		scale: 1,
 		color: [[212, 212, 212]]
 	};
 	var start;
 
-	function change_sprite_color(px_data, new_color, base_color, x, y, ctx) {
+	function change_img_color(px_data, new_color, base_color, x, y, ctx) {
 		let px_arr = px_data.data;
 		// let px_rep_count = 0;
 		for(let i = 0; i < px_arr.length; i += 4) {
@@ -56,9 +56,16 @@ function init_custom_pallete(color_num) {
 		buffer.height = img.height;
 		buff_ctx.drawImage(img, 0, 0);
 		let buff_data = buff_ctx.getImageData(0, 0, img.width, img.height);
-		change_sprite_color(buff_data, new_color, base_color, 0, 0, buff_ctx);
+		change_img_color(buff_data, new_color, base_color, 0, 0, buff_ctx);
 		// console.log("w: " + buffer.width + " | h: " + buffer.height);
 		return buffer;
+	}
+
+	function change_sprite_color(new_color) {
+		let back_idx = SPRITE.color.length - 1;
+		let base_color = SPRITE.color[back_idx];
+		SPRITE.asset = recolor_img(SPRITE.asset, new_color, base_color);
+		SPRITE.color.push(new_color);
 	}
 
 	function handle_color_refresh() {
@@ -69,36 +76,28 @@ function init_custom_pallete(color_num) {
 		}
 	}
 
-	// function handle_buffer_load() {
-	// 	SPRITE.asset = this;
-	// 	console.log(this);
-	// }
-
 	function handle_color_click() {
 		NEXT_BUTTON.style.backgroundColor = this.style.backgroundColor;
 		let new_color = parse_rgb_str(this.style.backgroundColor);
 		console.log(new_color);
 		console.log(this.style.backgroundColor);
-		let back_idx = SPRITE.color.length - 1;
-		base_color = SPRITE.color[back_idx];
+		change_sprite_color(new_color);
 
 		// let px_data = CTX.getImageData(SPRITE.x, SPRITE.y, SPRITE.w, SPRITE.h);
 		// change_sprite_color(px_data, new_color, base_color, CTX);
 
-		// get_buffer_asset_output(new_color);
-		// let curr_src = SPRITE.asset_src[SPRITE.curr_state].src;
-		// console.log(curr_src);
-		// var buff_img = new Image();
-		// buff_img.src = curr_src[curr_src.length - 1];
-		// buff_img.addEventListener('load', handle_buffer_load);
-
-		SPRITE.asset = recolor_img(SPRITE.asset, new_color, base_color);
-		SPRITE.color.push(new_color);
 		// render_sprite();
 	}
 
 	function handle_input_change(e) {
-		
+
+	}
+
+	function handle_input_blur() {
+		if (COLOR_INPUT.value && parseInt(COLOR_INPUT.value, 16)) {
+			let new_color = parse_hex_to_rgb(COLOR_INPUT.value);
+			change_sprite_color(new_color);
+		}
 	}
 
 	function handle_sprite_load() {
@@ -114,7 +113,8 @@ function init_custom_pallete(color_num) {
 
 	function set_listeners() {
 		REFRESH_BUTTON.addEventListener('click', handle_color_refresh);
-		COLOR_INPUT.addEventListener('focus', handle_input_change);
+		COLOR_INPUT.addEventListener('input', handle_input_change);
+		COLOR_INPUT.addEventListener('blur', handle_input_blur);
 		SPRITE.asset.addEventListener('load', handle_sprite_load);
 		window.addEventListener('resize', handle_window_resize);
 	}
@@ -132,9 +132,11 @@ function init_custom_pallete(color_num) {
 	}
 
 	function render_sprite() {
-		CTX.clearRect(SPRITE.x, SPRITE.y, SPRITE.w, SPRITE.h);
+		CTX.clearRect(SPRITE.x, SPRITE.y, SPRITE.w * SPRITE.scale, 
+			SPRITE.h * SPRITE.scale);
 		CTX.drawImage(SPRITE.asset, SPRITE.w * SPRITE.frame_idx, 0, SPRITE.w, 
-			SPRITE.h, SPRITE.x, SPRITE.y, SPRITE.w, SPRITE.h);
+			SPRITE.h, SPRITE.x, SPRITE.y, SPRITE.w * SPRITE.scale, 
+			SPRITE.h * SPRITE.scale);
 		SPRITE.frame_idx = (SPRITE.frame_idx + 1) % SPRITE.frame_count;
 	}
 
@@ -159,31 +161,6 @@ function init_custom_pallete(color_num) {
 		CANVAS.width = CANVAS.height * (CANVAS.clientWidth 
 			/ CANVAS.clientHeight);
 	}
-
-	// function init_buffer(state) {
-	// 	BUFFER.width = SPRITE.w * SPRITE.frame_count;
-	// 	BUFFER.height = SPRITE.h;
-	// 	BUFF_CTX.clearRect(0, 0, BUFFER.width, BUFFER.height);
-	// 	let back_idx = SPRITE.asset_src[state].src.length - 1;
-	// 	var buff_img = new Image();
-	// 	buff_img.src = SPRITE.asset_src[state].src[back_idx];
-	// 	buff_img.addEventListener('load', render_buffer_asset);
-	// }
-
-	// function render_buffer_asset() {
-	// 	var buff_img = this;
-	// 	BUFF_CTX.drawImage(buff_img, 0, 0);
-	// }
-
-	// function get_buffer_asset_output(new_color) {
-	// 	let states = Object.keys(SPRITE.asset_src);
-	// 	for(let i = 0; i < states.length; i++) {
-	// 		init_buffer(states[i]);
-	// 		let px_data = BUFF_CTX.getImageData(0, 0, BUFFER.width, BUFFER.height);
-	// 		change_sprite_color(px_data, new_color, BUFF_CTX);
-	// 		SPRITE.asset_src[states[i]].src.push(BUFFER.toDataURL());
-	// 	}
-	// }
 
 	set_listeners();
 	set_canvas_aspect();
@@ -223,7 +200,13 @@ function parse_rgb_str(rgb_str) {
 	return rgb_val;
 }
 
-
+function parse_hex_to_rgb(hex_str) {
+	let rgb = [];
+	for(let i = 0; i < 3; i += 2) {
+		rgb.push(parseInt(hex_str.substring(i, i + 2), 16));
+	}
+	return rgb;
+}
 
 
 
