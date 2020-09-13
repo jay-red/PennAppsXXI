@@ -174,7 +174,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.length = length;
 		this.health = 60000;
 		this.max = 60000;
-		this.defense = 1;
+		this.defense = 10;
 		this.damage = 50;
 		this.despawning = false;
 	}
@@ -189,7 +189,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.power = power;
 		this.can_split = split;
 		this.ai = ai;
-		this.defense = 50;
+		this.defense = 40;
 		this.damage = 10;
 		this.health = 1;
 		this.despawning = false;
@@ -429,6 +429,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 					segments.push( new SerpentHead( idx, split, power, ai, num_segs ) );
 					segments[ idx ].state.x = Math.random() * WIDTH_MAP;
 					segments[ idx ].state.y = Math.random() * HEIGHT_MAP;
+					segments[ idx ].max = (7144.7 * (num_segs**0.4486)) | 0;
 				} else {
 					segments.push( new SerpentBody( idx, head_idx, split, power, ai ) );
 					if( j == num_segs - 1 ) {
@@ -894,8 +895,11 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			width = WIDTH_TAIL;
 			hheight = HHEIGHT_TAIL;
 		}
-		var tl = [ segment.state.x + ( axis_horiz[ 1 ] * hheight ), segment.state.y - ( axis_horiz[ 0 ] * hheight ) ];
-		var br = [ segment.state.x + ( axis_horiz[ 0 ] * width ) - ( axis_horiz[ 1 ] * hheight ), segment.state.y + ( axis_horiz[ 0 ] * hheight ) + ( axis_horiz[ 1 ] * width ) ];
+		var sx = segment.state.x;
+		while( sx < 0 ) sx += WIDTH_MAP;
+		sx = ( sx ) % WIDTH_MAP;
+		var tl = [ sx + ( axis_horiz[ 1 ] * hheight ), segment.state.y - ( axis_horiz[ 0 ] * hheight ) ];
+		var br = [ sx + ( axis_horiz[ 0 ] * width ) - ( axis_horiz[ 1 ] * hheight ), segment.state.y + ( axis_horiz[ 0 ] * hheight ) + ( axis_horiz[ 1 ] * width ) ];
 		var hdotl = tl[ 0 ] * axis_horiz[ 0 ] + tl[ 1 ] * axis_horiz[ 1 ];
 		var hdotr = br[ 0 ] * axis_horiz[ 0 ] + br[ 1 ] * axis_horiz[ 1 ];
 		var vdott = tl[ 0 ] * axis_vert[ 0 ] + tl[ 1 ] * axis_vert[ 1 ];
@@ -1148,14 +1152,16 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			
 			if( x_view > WIDTH_MAP - x_view ) {
 				//ctx_view.drawImage( IMG_FOREST, x_view / WIDTH_MAP * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_IMG_FOREST, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_MAP, 0, WIDTH_MAP, HEIGHT_MAP );
+				ctx_view.drawImage( IMG_FOREST, 0, 0, WIDTH_IMG_FOREST, HEIGHT_IMG_FOREST, -x_view + WIDTH_MAP, -y_view, WIDTH_MAP, HEIGHT_MAP );
 				ctx_view.drawImage( canvas_tile, -x_view + WIDTH_MAP, -y_view );
 				ctx_view.drawImage( canvas_ent, -x_view + WIDTH_MAP, -y_view );
-				ctx_view.drawImage( IMG_FOREST, 0, 0, WIDTH_IMG_FOREST, HEIGHT_IMG_FOREST, -x_view + WIDTH_MAP, -y_view, WIDTH_MAP, HEIGHT_MAP );
+				
 			} else {
 				//ctx_view.drawImage( IMG_FOREST, x_view / WIDTH_MAP * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_IMG_FOREST, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, -WIDTH_MAP, 0, WIDTH_MAP, HEIGHT_MAP );
+				ctx_view.drawImage( IMG_FOREST, 0, 0, WIDTH_IMG_FOREST, HEIGHT_IMG_FOREST, -x_view - WIDTH_MAP, -y_view, WIDTH_MAP, HEIGHT_MAP );
 				ctx_view.drawImage( canvas_tile, -x_view - WIDTH_MAP, -y_view );
 				ctx_view.drawImage( canvas_ent, -x_view - WIDTH_MAP, -y_view );
-				ctx_view.drawImage( IMG_FOREST, 0, 0, WIDTH_IMG_FOREST, HEIGHT_IMG_FOREST, -x_view - WIDTH_MAP, -y_view, WIDTH_MAP, HEIGHT_MAP );
+				
 			}
 			ctx_view.imageSmoothingEnabled = true;
 			ctx_view.drawImage( canvas_tile, -x_view, -y_view );
