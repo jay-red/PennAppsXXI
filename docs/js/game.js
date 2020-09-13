@@ -20,7 +20,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		EXP_SERPENT_ACCELERATION = -0.882,
 		EXP_SERPENT_VELOCITY = -0.278;
 
-	var BULLET_VELOCITY = 0.7 * SCALE;
+	var BULLET_VELOCITY = 0.7 * SCALE,
+		BULLET_DURATION = 2000;
 
 	var TERMINAL_VELOCITY = 0.5 * SCALE,
 		GRAVITY = 0.0013 * SCALE;
@@ -56,6 +57,11 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		HEIGHT_VIEW = WIDTH_VIEW * window.screen.height / window.screen.width,
 		HWIDTH_VIEW = WIDTH_VIEW / 2,
 		HHEIGHT_VIEW = HEIGHT_VIEW / 2;
+
+	if( VR ) {
+		WIDTH_VIEW = WIDTH_MAP;
+		HEIGHT_VIEW = HEIGHT_MAP;
+	}
 
 	//var WIDTH_IMG_FOREST = 800,
 	//	HEIGHT_IMG_FOREST = 448;
@@ -196,6 +202,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.state = new EntityState();
 		this.hit = false;
 		this.damage = 50;
+		this.time_left = BULLET_DURATION;
 	}
 
 	function Player( idx ) {
@@ -298,6 +305,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		my_bullet.power = bullet.power;
 		my_bullet.state.last_update = -1;
 		my_bullet.damage = bullet.damage;
+		my_bullet.state.time_left = bullet.time_left;
 	}
 
 	function key_down( key ) {
@@ -366,6 +374,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			bullet = player_bullets[ idx ];
 		} else {
 			bullet.state.last_update = -1;
+			bullet.time_left = BULLET_DURATION;
 		}
 		bullet.state.active = true;
 		return idx;
@@ -380,11 +389,11 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			segment = segments[ i ];
 			if( segment.is_head ) {
 				if( CLIENT ) me.head = segment;
-				while( segment.state.x < 0 ) segment.state.x += WIDTH_MAP;
-				if( segment.state.x > WIDTH_MAP ) segment.state.x = segment.state.x % WIDTH_MAP;
-				if( segment.state.y > HEIGHT_MAP ) segment.state.y = segment.state.y % HEIGHT_MAP;
-				segment.state.dx = 0;
-				segment.state.dy = 0;
+				//while( segment.state.x < 0 ) segment.state.x += WIDTH_MAP;
+				//if( segment.state.x > WIDTH_MAP ) segment.state.x = segment.state.x % WIDTH_MAP;
+				//if( segment.state.y > HEIGHT_MAP ) segment.state.y = segment.state.y % HEIGHT_MAP;
+				//segment.state.dx = 0;
+				//segment.state.dy = 0;
 				segment.health = segment.max;
 			} else {
 				segment.state.x = 0;
@@ -531,6 +540,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 				me.switched = false;
 			}
 			me.x_tile = ( ( x_view + me.x_mouse ) / WIDTH_TILE ) | 0;
+			while( me.x_tile < 0 ) me.x_tile += TWIDTH_MAP;
+			me.x_tile = me.x_tile % TWIDTH_MAP;
 			me.y_tile = ( ( y_view + me.y_mouse ) / HEIGHT_TILE ) | 0;
 			var mx = me.x_mouse - HWIDTH_VIEW;
 			var my = me.y_mouse - HHEIGHT_VIEW;
@@ -644,8 +655,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			}
 
 			if( x_next < 0 ) {
-				x_next = 0;
-				dx = 0;
+				x_next += WIDTH_MAP;
 			}
 			if( y_next < 0 ) {
 				y_next = 0;
@@ -653,8 +663,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			}
 
 			if( x_next + WIDTH_PLAYER >= WIDTH_MAP ) {
-				x_next = WIDTH_MAP - WIDTH_PLAYER;
-				dx = 0;
+				x_next -= WIDTH_MAP;
 			}
 			if( y_next + HEIGHT_PLAYER >= HEIGHT_MAP ) {
 				y_next = HEIGHT_MAP - HEIGHT_PLAYER;
@@ -692,6 +701,15 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		player.state.last_update = ts;
 	}
 
+	var target_cx = -1;
+	var target_cy = -1;
+	var targetted = false;
+	function target_coord( scale, x, y ) {
+		target_cx = x / scale * SCALE;
+		target_cy = y / scale * SCALE;
+	}
+
+
 	function update_head( ts, head ) {
 		if( head.state.last_update == -1 ) head.state.last_update = ts;
 		var ticks = ts - head.state.last_update;
@@ -713,17 +731,34 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	    else target = players[ head.target ];
 	    if( target == null || !target.state.active || !target.alive ) {
 	    	var player,
-	    		next_target = -1;
+	    		next_target = -1,
+	    		dist = -1,
+	    		ndist = -1;
 	    	for( var i = 0; i < players.length; ++i ) {
 	    		player = players[ i ];
 	    		if( player.state.active && player.alive ) {
-	    			next_target = i;
-	    			break;
+	    			ndist = Math.sqrt( ( head.state.x - player.state.x ) ** 2 + ( head.state.y - player.state.y ) ** 2 );
+	    			if( dist == -1 ) {
+	    				dist = ndist;
+	    				next_target = i;
+	    			} else if( ndist < dist ) {
+	    				dist = ndist;
+	    				next_target = i;
+	    			}
 	    		}
 	    		player.ready = false;
 	    	}
 	    	if( next_target == -1 ) target = null;
 	    	else target = players[ head.target = next_target ];
+	    }
+	    if( SERVER && !targetted && target_cy != -1 && target_cx != -1 ) {
+	    	target = {
+	    		state : {
+	    			x : target_cx,
+	    			y : target_cy
+	    		}
+	    	}
+	    	targetted = true;
 	    }
 	    if( target == null || head.despawning ) {
             head.state.dy += 0.11;
@@ -740,7 +775,10 @@ function init_game( cb_init, send_update, node_type, init_data ) {
             }
             head.despawning = true;
         } else {
-		    var diff_x = target.state.x - head.state.x;
+        	var d1 = target.state.x - head.state.x;
+        	var d2 = ( WIDTH_MAP - target.state.x ) - head.state.x;
+        	var diff_x = target.state.x - head.state.x;
+        	if( Math.abs( d2 ) < Math.abs( d1 ) ) diff_x = d2;
 		    var diff_y = target.state.y - head.state.y;
 
 		    var dist = Math.sqrt( diff_x * diff_x + diff_y * diff_y );
@@ -797,6 +835,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		}
 	    head.state.x += head.state.dx * ticks;
 	    head.state.y += head.state.dy * ticks;
+
 	    head.state.angle = ( Math.atan2( head.state.dy, head.state.dx ) );
 	    while( head.state.angle < 0 ) head.state.angle += Math.PI * 2;
 	    head.state.angle = ( ( head.state.angle / Math.PI * 180 ) | 0 ) % 360;
@@ -808,8 +847,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		var ticks = ts - body.state.last_update;
 
 		var parent = segments[ body.idx - 1 ];
-		var diff_x = parent.state.x - body.state.x;
-		var diff_y = parent.state.y - body.state.y;
+    	var diff_x = parent.state.x - body.state.x;
+	    var diff_y = parent.state.y - body.state.y;
 
 		var head_segment = segments[ body.idx_head ];
 		if( !head_segment.alive ) {
@@ -890,8 +929,11 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 
 		var ticks = ts - bullet.state.last_update;
 
-		if( bullet.state.x < 0 ) bullet.state.active = false;
-		else if( bullet.state.x >= WIDTH_MAP ) bullet.state.active = false;
+		if( bullet.time_left > 0 ) bullet.time_left -= ticks;
+		if( bullet.time_left <= 0 ) bullet.state.active = false;
+
+		if( bullet.state.x < 0 ) bullet.state.x += WIDTH_MAP;
+		else if( bullet.state.x >= WIDTH_MAP ) bullet.state.x -= WIDTH_MAP;
 		if( bullet.state.y < 0 ) bullet.state.active = false;
 		else if( bullet.state.y >= HEIGHT_MAP ) bullet.state.active = false;
 		bullet.state.x += bullet.state.dx * ticks;
@@ -937,6 +979,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 
 	function update_segments( ts ) {
 		var segment;
+		targetted = false;
 		for( var i = 0; i < segments.length; ++i ) {
 			segment = segments[ i ];
 			if( segment.is_head ) {
@@ -992,6 +1035,15 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 				ctx_ent.drawImage( img, 0, 0 );
 				//ctx_view.fillRect( 0, 0, 32, 32 );
 				ctx_ent.setTransform( 1, 0, 0, 1, 0, 0 );
+				var x_transform = -WIDTH_MAP;
+				if( bullet.state.x > WIDTH_MAP - bullet.state.x ) {
+					x_transform = WIDTH_MAP;
+				}
+				ctx_ent.translate( bullet.state.x + x_transform, bullet.state.y );
+				ctx_ent.rotate( ANGLES[ ( bullet.state.angle + 180 ) % 360 ][ 0 ] );
+				ctx_ent.drawImage( img, 0, 0 );
+				//ctx_view.fillRect( 0, 0, 32, 32 );
+				ctx_ent.setTransform( 1, 0, 0, 1, 0, 0 );
 			}
 		}
 	}
@@ -1024,6 +1076,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 				offset_x = player.anim.width - player.anim.offset_x - WIDTH_PLAYER;
 			}
 			ctx_ent.drawImage( img, player.anim.width * player.anim.frame, 0, player.anim.width, player.anim.height, Math.round( player.state.x - offset_x ), Math.round( player.state.y - offset_y ), player.anim.width, player.anim.height );
+			if( player.state.x < WIDTH_MAP - player.state.x ) ctx_ent.drawImage( img, player.anim.width * player.anim.frame, 0, player.anim.width, player.anim.height, Math.round( player.state.x - offset_x + WIDTH_MAP ), Math.round( player.state.y - offset_y ), player.anim.width, player.anim.height );
+			else ctx_ent.drawImage( img, player.anim.width * player.anim.frame, 0, player.anim.width, player.anim.height, Math.round( player.state.x - offset_x - WIDTH_MAP ), Math.round( player.state.y - offset_y ), player.anim.width, player.anim.height );
 		}
 	}
 
@@ -1060,7 +1114,20 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 				frame = 1;
 			}
 			//ctx_view.fillRect( segment.state.x - 48, segment.state.y - 48, 96, 96 );
-			ctx_ent.translate( segment.state.x, segment.state.y );
+			var x = segment.state.x;
+			while( x < 0 ) x += WIDTH_MAP;
+			x = x % WIDTH_MAP;
+			ctx_ent.translate( x, segment.state.y );
+			ctx_ent.rotate( ANGLES[ segment.state.angle ][ 0 ] );
+			ctx_ent.translate( offset_x, -HHEIGHT_IMG_SERPENT );
+			ctx_ent.drawImage( img, frame * WIDTH_IMG_SERPENT, 0, WIDTH_IMG_SERPENT, HEIGHT_IMG_SERPENT, 0, 0, WIDTH_IMG_SERPENT, HEIGHT_IMG_SERPENT );
+			//ctx_view.fillRect( 0, 0, 32, 32 );
+			ctx_ent.setTransform( 1, 0, 0, 1, 0, 0 );
+			var x_transform = -WIDTH_MAP;
+			if( x < WIDTH_MAP - x ) {
+				x_transform = WIDTH_MAP;
+			}
+			ctx_ent.translate( x + x_transform, segment.state.y );
 			ctx_ent.rotate( ANGLES[ segment.state.angle ][ 0 ] );
 			ctx_ent.translate( offset_x, -HHEIGHT_IMG_SERPENT );
 			ctx_ent.drawImage( img, frame * WIDTH_IMG_SERPENT, 0, WIDTH_IMG_SERPENT, HEIGHT_IMG_SERPENT, 0, 0, WIDTH_IMG_SERPENT, HEIGHT_IMG_SERPENT );
@@ -1070,15 +1137,35 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	}
 
 	function draw_viewport() {
-		x_view = Math.round( me.player.state.x + HWIDTH_PLAYER - HWIDTH_VIEW );
-		y_view = Math.round( me.player.state.y + HHEIGHT_PLAYER - HHEIGHT_VIEW );
-		ctx_view.clearRect( 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
-		ctx_view.imageSmoothingEnabled = false;
-		ctx_view.drawImage( IMG_FOREST, x_view / WIDTH_MAP * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_VIEW / WIDTH_MAP * WIDTH_IMG_FOREST, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
-		//ctx_view.drawImage( IMG_FOREST, x_view / HEIGHT_MAP / 2.5 * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_VIEW / WIDTH_MAP * HEIGHT_IMG_FOREST * 2.5, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
-		ctx_view.imageSmoothingEnabled = true;
-		ctx_view.drawImage( canvas_tile, -x_view, -y_view );
-		ctx_view.drawImage( canvas_ent, -x_view, -y_view );
+		if( CLIENT ) {
+			x_view = Math.round( me.player.state.x + HWIDTH_PLAYER - HWIDTH_VIEW );
+			y_view = Math.round( me.player.state.y + HHEIGHT_PLAYER - HHEIGHT_VIEW );
+			ctx_view.clearRect( 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
+			ctx_view.imageSmoothingEnabled = false;
+			//ctx_view.drawImage( IMG_FOREST, x_view / WIDTH_MAP * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_VIEW / WIDTH_MAP * WIDTH_IMG_FOREST, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
+			ctx_view.drawImage( IMG_FOREST, 0, 0, WIDTH_IMG_FOREST, HEIGHT_IMG_FOREST, -x_view, -y_view, WIDTH_MAP, HEIGHT_MAP );
+			//ctx_view.drawImage( IMG_FOREST, x_view / HEIGHT_MAP / 2.5 * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_VIEW / WIDTH_MAP * HEIGHT_IMG_FOREST * 2.5, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
+			
+			if( x_view > WIDTH_MAP - x_view ) {
+				//ctx_view.drawImage( IMG_FOREST, x_view / WIDTH_MAP * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_IMG_FOREST, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_MAP, 0, WIDTH_MAP, HEIGHT_MAP );
+				ctx_view.drawImage( canvas_tile, -x_view + WIDTH_MAP, -y_view );
+				ctx_view.drawImage( canvas_ent, -x_view + WIDTH_MAP, -y_view );
+				ctx_view.drawImage( IMG_FOREST, 0, 0, WIDTH_IMG_FOREST, HEIGHT_IMG_FOREST, -x_view + WIDTH_MAP, -y_view, WIDTH_MAP, HEIGHT_MAP );
+			} else {
+				//ctx_view.drawImage( IMG_FOREST, x_view / WIDTH_MAP * WIDTH_IMG_FOREST, y_view / HEIGHT_MAP * HEIGHT_IMG_FOREST, WIDTH_IMG_FOREST, HEIGHT_VIEW / HEIGHT_MAP * HEIGHT_IMG_FOREST, -WIDTH_MAP, 0, WIDTH_MAP, HEIGHT_MAP );
+				ctx_view.drawImage( canvas_tile, -x_view - WIDTH_MAP, -y_view );
+				ctx_view.drawImage( canvas_ent, -x_view - WIDTH_MAP, -y_view );
+				ctx_view.drawImage( IMG_FOREST, 0, 0, WIDTH_IMG_FOREST, HEIGHT_IMG_FOREST, -x_view - WIDTH_MAP, -y_view, WIDTH_MAP, HEIGHT_MAP );
+			}
+			ctx_view.imageSmoothingEnabled = true;
+			ctx_view.drawImage( canvas_tile, -x_view, -y_view );
+			ctx_view.drawImage( canvas_ent, -x_view, -y_view );
+		} else {
+			ctx_view.clearRect( 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
+			ctx_view.drawImage( IMG_FOREST, 0, 0, WIDTH_IMG_FOREST, HEIGHT_IMG_FOREST, 0, 0, WIDTH_VIEW, HEIGHT_VIEW );
+			ctx_view.drawImage( canvas_tile, 0, 0 );
+			ctx_view.drawImage( canvas_ent, 0, 0 );
+		}
 	}
 
 	function draw_me() {
@@ -1114,17 +1201,24 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			draw_segments();
 			if( CLIENT ) {
 				draw_me();
-				draw_viewport();
-				send_update( me.update_x_tile, me.update_y_tile, me.update_idx_bullet, me.head );
+				
 			}
+			draw_viewport();
+			if( CLIENT ) send_update( me.update_x_tile, me.update_y_tile, me.update_idx_bullet, me.head );
+			else if( spawned ) send_update();
 		}
-		window.requestAnimationFrame( game_loop );
+		if( !VR ) window.requestAnimationFrame( game_loop );
 	}
 
 	function get_tile( x, y ) {
+		if( typeof wrap == "undefined" || wrap == null ) wrap = true;
 		if( y >= 0 && y < THEIGHT_MAP ) {
 			var row = tiles[ y ];
-			if( x >= 0 && x < TWIDTH_MAP ) {
+			if( x >= 0 && x < TWIDTH_MAP || wrap ) {
+				if( wrap ) {
+					while( x < 0 ) x += TWIDTH_MAP;
+					x = x % TWIDTH_MAP;
+				}
 				return tiles[ y ][ x ];
 			}
 		}
@@ -1202,18 +1296,21 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	}
 
 	function callback_forest() {
-		window.requestAnimationFrame( game_loop );
+		if( VR ) window.game_loop = game_loop;
+		else window.requestAnimationFrame( game_loop );
 	}
 
 	function init_listeners() {
 		//ctx_tile.fillRect( 0, 0, WIDTH_MAP, HEIGHT_MAP );
-		if( me != null ) {
-			hud.addEventListener( "mousemove", handle_mousemove );
-			hud.addEventListener( "mousedown", handle_mousedown );
-			hud.addEventListener( "mouseup", handle_mouseup );
-			hud.addEventListener( "contextmenu", handle_contextmenu );
-			document.addEventListener( "keydown", handle_keydown );
-			document.addEventListener( "keyup", handle_keyup );
+		if( CLIENT ) {
+			if( me != null ) {
+				hud.addEventListener( "mousemove", handle_mousemove );
+				hud.addEventListener( "mousedown", handle_mousedown );
+				hud.addEventListener( "mouseup", handle_mouseup );
+				hud.addEventListener( "contextmenu", handle_contextmenu );
+				document.addEventListener( "keydown", handle_keydown );
+				document.addEventListener( "keyup", handle_keyup );
+			}
 		}
 		IMG_FOREST.addEventListener( "load", callback_forest );
 		IMG_FOREST.addEventListener( "error", callback_forest );
@@ -1283,14 +1380,16 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		game_state[ "scale" ] = SCALE;
 		game_state[ "spawned" ] = spawned;
 		game_state[ "activate_boss" ] = activate_boss;
+		game_state[ "width" ] = WIDTH_MAP;
+		game_state[ "height" ] = HEIGHT_MAP;
+		game_state[ "target" ] = target_coord;
 		cb_init( game_state );
 		if( SERVER ) {
-
-		} else if( CLIENT ) {
+			window.requestAnimationFrame( game_loop )
+		} else if( CLIENT || VR ) {
 			init_listeners();
 		}
 		console.log( "st" )
-		window.requestAnimationFrame( game_loop );
 	}
 
 	function callback_sprites( evt ) {

@@ -5,7 +5,8 @@ var OP_JOIN = 0x0,
 	OP_SYNC_BULLETS = 0x4,
 	OP_UPDATE_SERVER = 0x5,
 	OP_UPDATE_CLIENT = 0x6,
-	OP_UPDATE_VR = 0x7;
+	OP_UPDATE_VR = 0x7,
+	OP_JOIN_VR = 0x8;
 
 var rtc,
 	game_state;
@@ -71,6 +72,41 @@ function handle_msg( channel, msg ) {
 				game_state.parse_bullet( data.scale, data.bullet );
 			}
 			game_state.parse_player( data.scale, data.player );
+			break;
+		case OP_JOIN_VR:
+			send_msg( OP_JOIN_VR, null, channel );
+			var sync_data;
+			for( var i = 0; i < game_state.tiles.length; ++i ) {
+				sync_data = {};
+				sync_data[ "id" ] = i;
+				sync_data[ "row" ] = game_state.tiles[ i ];
+				sync_data[ "last" ] = i == game_state.tiles.length - 1;
+				send_msg( OP_SYNC_TILES, sync_data, channel );
+			}
+			for( i = 0; i < game_state.players.length; ++i ) {
+				sync_data = {};
+				sync_data[ "id" ] = i;
+				sync_data[ "player" ] = game_state.players[ i ];
+				sync_data[ "last" ] = i == game_state.players.length - 1;
+				send_msg( OP_SYNC_PLAYERS, sync_data, channel );
+			}
+			for( i = 0; i < game_state.bullets.length; ++i ) {
+				sync_data = {};
+				sync_data[ "id" ] = i;
+				sync_data[ "row" ] = game_state.bullets[ i ];
+				sync_data[ "last" ] = i == game_state.bullets.length - 1;
+				send_msg( OP_SYNC_BULLETS, sync_data, channel );
+			}
+			for( i = 0; i < game_state.segments.length; ++i ) {
+				sync_data = {};
+				sync_data[ "id" ] = i;
+				sync_data[ "segment" ] = game_state.segments[ i ];
+				sync_data[ "last" ] = i == game_state.segments.length - 1;
+				send_msg( OP_SYNC_SEGMENTS, sync_data, channel );
+			}
+			break;
+		case OP_UPDATE_VR:
+			game_state.target( data.scale, data.x, data.y );
 			break;
 	}
 }

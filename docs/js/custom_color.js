@@ -1,6 +1,7 @@
 
 
-function init_custom_pallete(callback) {
+function init_custom_pallete(callback, vr=false) {
+	if(!vr) {
 	var CANVAS = document.getElementById("sprite-canvas");
 	var CTX = CANVAS.getContext("2d");
 	var PALLETE = document.getElementById("color-pallete");
@@ -9,6 +10,7 @@ function init_custom_pallete(callback) {
 	var COLOR_INPUT = document.getElementById('color-input');
 	var CANVAS_SCALE = .25;
 	var PALLETE_NUM = 8;
+}
 	var SPRITE = {
 		asset_src: {
 			idle: {
@@ -178,10 +180,17 @@ function init_custom_pallete(callback) {
 			/ CANVAS.clientHeight);
 	}
 
-	set_listeners();
-	set_canvas_aspect();
-	load_sprite();
-	populate_pallete(PALLETE_NUM);
+	if( !vr ) {
+		set_listeners();
+		set_canvas_aspect();
+		load_sprite();
+		populate_pallete(PALLETE_NUM);
+	} else {
+		evt = {
+			recolor: recolor_img_hex
+		};
+		callback( evt);
+	}
 
 	function randomize_color(to_hex) {
 		let color = [];
