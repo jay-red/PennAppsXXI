@@ -1,6 +1,6 @@
 
 
-function init_custom_gun(callback, dim=[20, 20]) {
+function init_custom_gun(callback, dim=[20, 10]) {
 	var CANVAS_CONTAINER = document.getElementById("canvas-container");
 	var SIZE_CONTAINER = document.getElementById("size-container");
 	var CANVAS = document.getElementById("gun-canvas");
