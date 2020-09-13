@@ -202,6 +202,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.idx = idx;
 		this.state = new EntityState();
 		this.alive = false;
+		this.color = "FFFFFF";
 		if( SERVER ) {
 			this.anim_idle = null;
 			this.anim_run = null;
@@ -224,7 +225,6 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.hit = false;
 		this.ready = false;
 		this.max = MAX_HEALTH;
-		this.color = "FFFFFF";
 		this.time_respawn = 0;
 		//this.time_jump = 100;
 	}
