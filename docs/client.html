@@ -1,12 +1,30 @@
 <!DOCTYPE html>
 	<head>
 		<title>PennAppsXXI</title>
+		<link rel="stylesheet" type="text/css" href="css/custom_color.css" />
 		<link rel="stylesheet" type="text/css" href="css/game.css" />
 	</head>
 	<body>
-		<div id ="hud">
+		<div id="color-screen" class="show">
+			<div id="custom-color" class="grid-container">
+				<div id="canvas-container">
+					<canvas id="sprite-canvas"></canvas>
+				</div>
+				<div id="right">
+					<div id="color-pallete" class="grid-container"></div>
+					<div id="input-container">
+						<span id="octothorp">#</span><input id="color-input" />
+						<span><img id="refresh-icon" src="assets/refresh_icon.png" /></span>
+					</div>
+				</div>
+				<div id="button-container">
+					<button id="color-next-button" class="next-button">next</button>
+				</div>
+			</div>
 		</div>
-		<div id="game-screen">
+		<div id ="hud" class="hide">
+		</div>
+		<div id="game-screen" class="hide">
 			<canvas id="game-canvas"></canvas>
 		</div>
 		<script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
@@ -23,6 +41,7 @@
 			};
 			firebase.initializeApp( firebaseConfig );
 		</script>
+		<script src="js/custom_color.js"></script>
 		<script src="js/sprites.js"></script>
 		<script src="js/game.js"></script>
 		<script src="js/rtc.js"></script>

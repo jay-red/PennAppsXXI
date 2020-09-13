@@ -174,4 +174,13 @@ function callback_init_rtc( evt ) {
 	rtc = evt;
 }
 
-init_rtc( callback_init_rtc, callback_invalid_game, callback_channel_open, handle_msg, false );
+function callback_color_palette( evt ) {
+	init_game_data[ "color" ] = evt;
+	console.log(evt)
+	document.body.removeChild( document.getElementById( "color-screen" ) );
+	document.getElementById( "hud" ).setAttribute( "class", "show" );
+	document.getElementById( "game-screen" ).setAttribute( "class", "show" );
+	init_rtc( callback_init_rtc, callback_invalid_game, callback_channel_open, handle_msg, false );
+}
+
+init_custom_pallete( callback_color_palette );

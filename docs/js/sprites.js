@@ -9,8 +9,6 @@ function init_sprites( callback_init, SCALE ) {
 		IMG_BULLET_AIR = new Image(),
 		IMG_PLAYER_RUN_L = new Image(),
 		IMG_PLAYER_IDLE_L = new Image(),
-		IMG_PLAYER_GLIDE_L = new Image(),
-		IMG_PLAYER_FLAP_L = new Image(),
 		IMG_PLAYER_RUN_R = new Image(),
 		IMG_PLAYER_IDLE_R = new Image(),
 		IMG_PLAYER_GLIDE_R = new Image(),
@@ -33,6 +31,7 @@ function init_sprites( callback_init, SCALE ) {
 				tmp,
 				tmp_ctx;
 			for( var i = 0; i < entries.length; ++i ) {
+				if( entries[ i ][ 0 ] == "Sprite" ) continue;
 				value = entries[ i ][ 1 ];
 				tmp = document.createElement( "canvas" );
 				tmp.width = value.img.width * SCALE;
@@ -60,11 +59,14 @@ function init_sprites( callback_init, SCALE ) {
 		}
 	}
 
-	function Sprite( img, src ) {		
-		++len_sprites;
+	function Sprite( img, src, load ) {		
+		if( typeof load == "undefined" || load ) {
+			++len_sprites;
+			sprites.push( this );
+		}
+		console.log( src + "h" );
 		this.img = img;
 		this.src = src;
-		sprites.push( this );
 	}
 
 	function load_sprite( sprite ) {
@@ -93,18 +95,16 @@ function init_sprites( callback_init, SCALE ) {
 
 	evt[ "PLAYER_RUN_L" ] = new Sprite( IMG_PLAYER_RUN_L, "assets/player_run_l.png" );
 	evt[ "PLAYER_IDLE_L" ] = new Sprite( IMG_PLAYER_IDLE_L, "assets/player_idle_l.png" );
-	evt[ "PLAYER_GLIDE_L" ] = new Sprite( IMG_PLAYER_GLIDE_L, "assets/player_glide_l.png" );
-	evt[ "PLAYER_FLAP_L" ] = new Sprite( IMG_PLAYER_FLAP_L, "assets/player_flap_l.png" );
 
 	evt[ "PLAYER_RUN_R" ] = new Sprite( IMG_PLAYER_RUN_R, "assets/player_run_r.png" );
 	evt[ "PLAYER_IDLE_R" ] = new Sprite( IMG_PLAYER_IDLE_R, "assets/player_idle_r.png" );
-	evt[ "PLAYER_GLIDE_R" ] = new Sprite( IMG_PLAYER_GLIDE_R, "assets/player_glide_r.png" );
-	evt[ "PLAYER_FLAP_R" ] = new Sprite( IMG_PLAYER_FLAP_R, "assets/player_flap_r.png" );
 
 	evt[ "CURSOR_VALID" ] = new Sprite( IMG_CURSOR_VALID, "assets/cursor_valid.png" );
 	evt[ "CURSOR_INVALID" ] = new Sprite( IMG_CURSOR_INVALID, "assets/cursor_invalid.png" );
 
 	evt[ "PLATFORM" ] = new Sprite( IMG_PLATFORM, "assets/platform.png" );
+
+	evt[ "Sprite" ] = Sprite;
 
 	load_sprites();
 }

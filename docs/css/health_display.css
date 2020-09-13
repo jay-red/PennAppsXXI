@@ -1,0 +1,71 @@
+body, html {
+	margin: 0;
+	-webkit-touch-callout: none; /* iOS Safari */
+	-webkit-user-select: none; /* Safari */
+	-khtml-user-select: none; /* Konqueror HTML */
+	-moz-user-select: none; /* Old versions of Firefox */
+	-ms-user-select: none; /* Internet Explorer/Edge */
+	user-select: none; /* Non-prefixed version, currently
+						  supported by Chrome, Edge, Opera and Firefox */
+}
+
+#boss-div {
+	width: 100%;
+}
+
+#player-div {
+	width: 100%;
+}
+
+.pixelate {
+	-ms-interpolation-mode: nearest-neighbor;
+	image-rendering: -webkit-optimize-contrast;
+	image-rendering: optimizeSpeed;
+	image-rendering: -o-crisp-edges;
+	image-rendering: -moz-crisp-edges;	
+	image-rendering: pixelated;
+}
+
+.health-bar {
+	margin: 16px auto;
+	width: 80%;
+	position: relative;
+}
+
+.health-bar-frame {
+	width: 100%;
+	position: relative;
+	left: 0;
+	top: 0;
+}
+
+.health-bar-shade {
+	width: 100%;
+	position: absolute;
+	left: 0;
+	top: 0;
+	mix-blend-mode: multiply;
+}
+
+.health-bar-gauge {
+/*    background-color: grey;
+*/    width: 80%;
+	height: 58%;
+	position: absolute;
+	left: 10%;
+	top: 19.5%;
+}
+
+.health-bar-hp {
+	background-color: red;
+	height: 100%;
+/*	width: 100%;
+*/}
+
+.health-heart-asset {
+	width: 9%;
+	margin: .5%;
+	opacity: 1;
+}
+
+

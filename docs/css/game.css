@@ -5,6 +5,14 @@ html, body {
 	padding: 0px;
 }
 
+.hide {
+	display: none!important;
+}
+
+.show {
+	display: block!important
+}
+
 #hud {
 	position: absolute;
 	top: 0px;

@@ -104,7 +104,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 
 	var game_state = {};
 
-	var hud = document.getElementById( "hud" );
+	var hud = document.getElementById( "hud" ),
+		recolor = null;
 
 	var canvas_view = document.getElementById( "game-canvas" ),
 		ctx_view = null,
@@ -194,8 +195,9 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			this.anim_idle = null;
 			this.anim_run = null;
 		} else {
-			this.anim_idle = new Animation( sprites.PLAYER_IDLE_L, sprites.PLAYER_IDLE_R, 9, 7, 24, 24, 4, 120 );
-			this.anim_run = new Animation( sprites.PLAYER_RUN_L, sprites.PLAYER_RUN_R, 9, 7, 24, 24, 6, 120 );
+			this.anim_idle = null;
+			this.anim_run = null;
+			animate_player( this );
 		}
 		this.anim = this.anim_idle;
 		this.last_anim = null;
@@ -210,10 +212,11 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.space = false;
 		this.hit = false;
 		this.ready = false;
+		this.color = "FFFFFF";
 		//this.time_jump = 100;
 	}
 
-	function Me( idx ) {
+	function Me( idx, color ) {
 		this.idx = idx;
 		this.player = players[ idx ];
 		this.keys = {};
@@ -233,6 +236,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.update_x_tile = -1;
 		this.update_y_tile = -1;
 		this.update_idx_bullet = -1;
+		this.player.color = color;
 	}
 
 	function parse_state( scale, my_state, state ) {
@@ -265,6 +269,10 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		my_player.space = player.space;
 		my_player.hit = player.hit;
 		my_player.ready  = player.ready ;
+		if( my_player.color != player.color ) {
+			my_player.color = player.color;
+			if( !SERVER ) animate_player( my_player );
+		}
 	}
 
 	function parse_bullet( scale, bullet ) {
@@ -286,8 +294,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	var me = null;
 
 	function animate_player( player ) {
-		player.anim_idle = new Animation( sprites.PLAYER_IDLE_L, sprites.PLAYER_IDLE_R, 9, 7, 24, 24, 4, 120 );
-		player.anim_run = new Animation( sprites.PLAYER_RUN_L, sprites.PLAYER_RUN_R, 9, 7, 24, 24, 6, 120 );
+		player.anim_idle = new Animation( new sprites.Sprite( recolor( sprites.PLAYER_IDLE_L.img, player.color ), "", false ), new sprites.Sprite( recolor( sprites.PLAYER_IDLE_R.img, player.color ), "", false ), 9, 7, 24, 24, 4, 120 );
+		player.anim_run = new Animation( new sprites.Sprite( recolor( sprites.PLAYER_RUN_L.img, player.color ), "", false ), new sprites.Sprite( recolor( sprites.PLAYER_RUN_R.img, player.color ), "", false ), 9, 7, 24, 24, 6, 120 );
 	}
 
 	function add_player() {
@@ -565,7 +573,6 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			player.jumping = true;
 			player.dropped = true;
 			dy += JUMP;
-			console.log( "j" );
 		} else if( player.space && !player.jumping ) {
 
 		}
@@ -583,8 +590,6 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			player.hit = false;
 			y_last += HEIGHT_TILE + 1;
 			y_next += 1;
-		} else if( player.down ) {
-			console.log( player.dropped, dy_last );
 		}
 
 		if( x_next < 0 ) {
@@ -1036,6 +1041,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		} else {
 			//ctx_tile.fillStyle = "#FFFFFF";
 			//ctx_tile.fillRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
+			ctx_tile.clearRect( tx, ty, WIDTH_TILE, HEIGHT_TILE );
 		}
 	}
 
@@ -1135,14 +1141,15 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			for( i = 0; i < segments.length; ++i ) {
 				if( segments.is_head ) heads.push( head_idx );
 			}
-			for( i = 0; i < players.length; ++i ) {
-				animate_player( players[ i ] );
-			}
 			bullets = init_data.bullets;
 			if( CLIENT ) {
-				me = new Me( init_data.me );
+				me = new Me( init_data.me, init_data.color.color );
 				me.player.alive = true;
 				console.log( me );
+			}
+			recolor = init_data.color.recolor;
+			for( i = 0; i < players.length; ++i ) {
+				animate_player( players[ i ] );
 			}
 			draw_tiles();
 		}
