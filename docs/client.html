@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+	<head>
+		<title>PennAppsXXI</title>
+		<link rel="stylesheet" type="text/css" href="css/game.css" />
+	</head>
+	<body>
+		<div id ="hud">
+		</div>
+		<div id="game-screen">
+			<canvas id="game-canvas"></canvas>
+		</div>
+		<script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-database.js"></script>
+		<script>
+			var firebaseConfig = {
+				apiKey: "AIzaSyDKit7WNkocBW8Tjb5KN-qspEZlzOP6Z0c",
+				authDomain: "oxymora-tem.firebaseapp.com",
+				databaseURL: "https://oxymora-tem.firebaseio.com",
+				projectId: "oxymora-tem",
+				storageBucket: "oxymora-tem.appspot.com",
+				messagingSenderId: "396929329888",
+				appId: "1:396929329888:web:28884a08c538e5e5503e85"
+			};
+			firebase.initializeApp( firebaseConfig );
+		</script>
+		<script src="js/sprites.js"></script>
+		<script src="js/game.js"></script>
+		<script src="js/rtc.js"></script>
+		<script src="js/client.js"></script>
+	</body>
+</html>
