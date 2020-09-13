@@ -389,11 +389,11 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			segment = segments[ i ];
 			if( segment.is_head ) {
 				if( CLIENT ) me.head = segment;
-				//while( segment.state.x < 0 ) segment.state.x += WIDTH_MAP;
-				//if( segment.state.x > WIDTH_MAP ) segment.state.x = segment.state.x % WIDTH_MAP;
-				//if( segment.state.y > HEIGHT_MAP ) segment.state.y = segment.state.y % HEIGHT_MAP;
-				//segment.state.dx = 0;
-				//segment.state.dy = 0;
+				while( segment.state.x < 0 ) segment.state.x += WIDTH_MAP;
+				if( segment.state.x > WIDTH_MAP ) segment.state.x = segment.state.x % WIDTH_MAP;
+				if( segment.state.y > HEIGHT_MAP ) segment.state.y = segment.state.y % HEIGHT_MAP;
+				segment.state.dx = 0;
+				segment.state.dy = 0;
 				segment.health = segment.max;
 			} else {
 				segment.state.x = 0;
@@ -403,6 +403,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			}
 			segment.state.active = true;
 			segment.alive = true;
+			segment.state.last_update = -1;
 		}
 	}
 
@@ -429,6 +430,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 					segments.push( new SerpentHead( idx, split, power, ai, num_segs ) );
 					segments[ idx ].state.x = Math.random() * WIDTH_MAP;
 					segments[ idx ].state.y = Math.random() * HEIGHT_MAP;
+					console.log(segments[ idx ].state.x, segments[ idx ].state.y)
 					segments[ idx ].max = (7144.7 * (num_segs**0.4486)) | 0;
 				} else {
 					segments.push( new SerpentBody( idx, head_idx, split, power, ai ) );
