@@ -25,6 +25,7 @@ var rtc,
 
 function callback_init_game( evt ) {
 	game_state = evt;
+	synced = true;
 }
 
 function update( tx, ty, idx_bullet ) {
@@ -40,7 +41,6 @@ function update( tx, ty, idx_bullet ) {
 
 function start_game() {
 	init_game( callback_init_game, update, 1, init_game_data );
-	synced = true;
 }
 
 function synced_tiles() {

@@ -573,6 +573,9 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			player.dropped = true;
 			player.hit = false;
 			y_last += HEIGHT_TILE + 1;
+			y_next += 1;
+		} else if( player.down ) {
+			console.log( player.dropped, dy_last );
 		}
 
 		if( x_next < 0 ) {
