@@ -50,12 +50,14 @@ function init_rtc( cb_init, cb_fail, cb_channel, handle_msg, is_server ) {
 	function send( msg ) {
 		if( is_server ) {
 			for( var i = 0; i < keys.length; ++i ) {
-				if( conn_data[ keys[ i ] ].channel.readyState == "open" ) {
+				if( conn_data[ keys[ i ] ].channel && conn_data[ keys[ i ] ].channel.readyState == "open" ) {
 					conn_data[ keys[ i ] ].channel.send( msg );
 				}
 			}
 		} else {
-			conn_data[ keys[ 0 ] ].channel.send( msg );
+			if( conn_data[ keys[ 0 ] ].channel && conn_data[ keys[ 0 ] ].channel.readyState == "open" ) {
+				conn_data[ keys[ 0 ] ].channel.send( msg );
+			}
 		}
 	}
 
@@ -66,6 +68,7 @@ function init_rtc( cb_init, cb_fail, cb_channel, handle_msg, is_server ) {
 			} else {
 				handle_msg( evt.data );
 			}
+			//console.log( evt.data );
 		}
 	}
 
@@ -99,7 +102,7 @@ function init_rtc( cb_init, cb_fail, cb_channel, handle_msg, is_server ) {
 		var conn = conn_data[ action.key ];
 		if( action.id <= conn.last_read ) return;
 		conn.last_read = action.id;
-		console.log( action );
+		//console.log( action );
 		switch( action.type ) {
 			case "create":
 				conn.channel = conn.rtc.createDataChannel( "game" );
@@ -165,11 +168,15 @@ function init_rtc( cb_init, cb_fail, cb_channel, handle_msg, is_server ) {
 		}
 	}
 
+	function callback_remove() {
+		firebase.database().ref( path + "/players/" ).on( "value", callback_players );
+	}
+
 	function callback_query_game( snapshot ) {
 		if( snapshot.exists() ) {
 			cb_init( evt );
 			if( is_server ) {
-				firebase.database().ref( path + "/players/" ).on( "value", callback_players );
+				firebase.database().ref( path + "/players/" ).remove().then( callback_remove ).catch( callback_remove );
 			} else {
 				( ref_player = firebase.database().ref( path + "/players/" ).push() ).set( {
 					active : true

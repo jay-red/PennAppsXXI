@@ -1,10 +1,16 @@
-function init_game() {
+function init_game( cb_init, send_update, node_type, init_data ) {
+	var NODE_SERVER = 0,
+		NODE_CLIENT = 1,
+		NODE_VR = 2;
+
+	var SERVER = ( node_type == NODE_SERVER );
+	var CLIENT = ( node_type == NODE_CLIENT );
+	var VR = ( node_type == NODE_VR );
+
 	var SCALE = 3;
+	if( VR ) SCALE = 2;
 
 	var IMG_FOREST = new Image();
-
-	//var SERPENT_ACCELERATION = 0.0002 * SCALE,
-	//	SERPENT_VELOCITY = 0.57 * SCALE;
 
 	var BASE_SERPENT_ACCELERATION = 0.0036 * SCALE,
 		BASE_SERPENT_VELOCITY = 1.2506 * SCALE,
@@ -96,6 +102,8 @@ function init_game() {
 
 	init_angles();
 
+	var game_state = {};
+
 	var hud = document.getElementById( "hud" );
 
 	var canvas_view = document.getElementById( "game-canvas" ),
@@ -168,9 +176,10 @@ function init_game() {
 		this.ai = ai;
 	}
 
-	function Bullet( idx, power ) {
+	function Bullet( idx, owner ) {
 		this.idx = idx;
-		this.power = power;
+		this.owner = owner;
+		this.power = POWER_FIRE;
 		this.state = new EntityState();
 		this.hit = false;
 	}
@@ -179,8 +188,13 @@ function init_game() {
 		this.idx = idx;
 		this.state = new EntityState();
 		this.alive = false;
-		this.anim_idle = new Animation( sprites.PLAYER_IDLE_L, sprites.PLAYER_IDLE_R, 9, 7, 24, 24, 4, 120 );
-		this.anim_run = new Animation( sprites.PLAYER_RUN_L, sprites.PLAYER_RUN_R, 9, 7, 24, 24, 6, 120 );
+		if( SERVER ) {
+			this.anim_idle = null;
+			this.anim_run = null;
+		} else {
+			this.anim_idle = new Animation( sprites.PLAYER_IDLE_L, sprites.PLAYER_IDLE_R, 9, 7, 24, 24, 4, 120 );
+			this.anim_run = new Animation( sprites.PLAYER_RUN_L, sprites.PLAYER_RUN_R, 9, 7, 24, 24, 6, 120 );
+		}
 		this.anim = this.anim_idle;
 		this.last_anim = null;
 		this.left = true;
@@ -193,6 +207,7 @@ function init_game() {
 		this.dropped = false;
 		this.space = false;
 		this.hit = false;
+		this.ready = false;
 		//this.time_jump = 100;
 	}
 
@@ -213,6 +228,42 @@ function init_game() {
 		this.building = true;
 		this.switched = false;
 		this.invulnerable = 0;
+		this.update_x_tile = -1;
+		this.update_y_tile = -1;
+		this.update_idx_bullet = -1;
+	}
+
+	function parse_state( my_state, state ) {
+		my_state.x = state.x;
+		my_state.y = state.y;
+		my_state.dx = state.dx;
+		my_state.dy = state.dy;
+		my_state.angle = state.angle;
+		my_state.active = state.active;
+	}
+
+	function parse_player( player ) {
+		var my_player = players[ player.idx ];
+		parse_state( my_player.state, player.state );
+		my_player.alive = player.alive;
+		my_player.left = player.left;
+		my_player.running = player.running;
+		my_player.health = player.health;
+		my_player.ready = player.ready;
+		my_player.jumped = player.jumped;
+		my_player.jumping = player.jumping;
+		my_player.down = player.down;
+		my_player.dropped = player.dropped;
+		my_player.space = player.space;
+		my_player.hit = player.hit;
+		my_player.ready  = player.ready ;
+	}
+
+	function parse_bullet( bullet ) {
+		var my_bullet = bullets[ bullet.owner ][ bullet.idx ];
+		parse_state( my_bullet.state, bullet.state );
+		my_bullet.power = bullet.power;
+		my_bullet.state.last_update = -1;
 	}
 
 	function key_down( key ) {
@@ -224,6 +275,20 @@ function init_game() {
 	var bullets = [];
 	var spawned = false;
 	var me = null;
+
+	function animate_player( player ) {
+		player.anim_idle = new Animation( sprites.PLAYER_IDLE_L, sprites.PLAYER_IDLE_R, 9, 7, 24, 24, 4, 120 );
+		player.anim_run = new Animation( sprites.PLAYER_RUN_L, sprites.PLAYER_RUN_R, 9, 7, 24, 24, 6, 120 );
+	}
+
+	function add_player() {
+		players.push( new Player( players.length ) );
+		bullets.push( [] );
+	}
+
+	function add_bullet( owner ) {
+		bullets[ owner ].push( new Bullet( bullets[ owner ].length, owner ) );
+	}
 
 	function activate_player() {
 		var player,
@@ -239,12 +304,11 @@ function init_game() {
 			}
 		}
 		if( append_player ) {
-			players.push( new Player( idx ) );
-			bullets.push( [] );
+			add_player();
 			player = players[ idx ];
 		}
 		player.state.active = true;
-		player.alive = true;
+		player.alive = false;
 		return idx;
 	}
 
@@ -263,7 +327,7 @@ function init_game() {
 			}
 		}
 		if( append_bullet ) {
-			player_bullets.push( new Bullet( idx, POWER_FIRE ) );
+			add_bullet( pid );
 			bullet = player_bullets[ idx ];
 		} else {
 			bullet.state.last_update = -1;
@@ -360,6 +424,9 @@ function init_game() {
 	function update_me( ts ) {
 		if( me == null ) return;
 		if( me.last_update == -1 ) me.last_update = ts;
+		me.update_x_tile = -1;
+		me.update_y_tile = -1;
+		me.update_idx_bullet = -1;
 		var ticks = ts - me.last_update;
 		if( me.invulnerable > 0 ) me.invulnerable -= ticks;
 		var down_a = key_down( KEY_A ),
@@ -379,7 +446,7 @@ function init_game() {
 			if( me.readied == 0 && down_enter ) {
 				me.player.ready = !me.player.ready;
 				me.readied = 1;
-				activate_boss();
+				player.ready = !player.ready;
 				console.log( "boss" )
 			} else if( me.readied == 1 && !down_enter ) {
 				me.readied = 0;
@@ -420,11 +487,14 @@ function init_game() {
 		me.player.left = ( a >= 90 ) && ( a <= 270 );
 		if( me.down_left ) {
 			if( me.building ) {
-				if( get_tile( me.x_tile, me.y_tile ) != -1 ) {
+				var tile = get_tile( me.x_tile, me.y_tile );
+				if( tile == 0 ) {
 					tiles[ me.y_tile ][ me.x_tile ] = 1;
 					draw_tile( me.x_tile - 1, me.y_tile );
 					draw_tile( me.x_tile, me.y_tile );
 					draw_tile( me.x_tile + 1, me.y_tile );
+					me.update_x_tile = me.x_tile;
+					me.update_y_tile = me.y_tile;
 				}
 			} else {
 				if( me.last_fired == -1 ) me.last_fired = ts - 200;
@@ -437,15 +507,18 @@ function init_game() {
 					bullet.state.dx = BULLET_VELOCITY * ANGLES[ a ][ 1 ];
 					bullet.state.dy = BULLET_VELOCITY * ANGLES[ a ][ 2 ];
 					me.last_fired = ts;
+					me.update_idx_bullet = bullet_idx;
 				}
 			}
 		} else if( me.down_right ) {
 			if( me.building ) {
-				if( get_tile( me.x_tile, me.y_tile ) != -1 ) {
+				if( get_tile( me.x_tile, me.y_tile ) == 1 ) {
 					tiles[ me.y_tile ][ me.x_tile ] = 0;
 					draw_tile( me.x_tile - 1, me.y_tile );
 					draw_tile( me.x_tile, me.y_tile );
 					draw_tile( me.x_tile + 1, me.y_tile );
+					me.update_x_tile = me.x_tile;
+					me.update_y_tile = me.y_tile;
 				}
 			}
 		}
@@ -722,7 +795,7 @@ function init_game() {
 		var player;
 		for( var i = 0; i < players.length; ++i ) {
 			player = players[ i ];
-			if( player.state.active ) {
+			if( player && player.state.active ) {
 				update_player( ts, player );
 			}
 		}
@@ -732,7 +805,7 @@ function init_game() {
 		var segment;
 		for( var i = 0; i < segments.length; ++i ) {
 			segment = segments[ i ];
-			if( segment.state.active && segment.alive ) {
+			if( segment && segment.state.active && segment.alive ) {
 				if( segment.is_head ) {
 					update_head( ts, segment );
 				} else {
@@ -748,9 +821,10 @@ function init_game() {
 			i;
 		for( var j = 0; j < bullets.length; ++j ) {
 			player_bullets = bullets[ j ];
+			if( !player_bullets ) continue;
 			for( i = 0; i < player_bullets.length; ++i ) {
 				bullet = player_bullets[ i ];
-				if( bullet.state.active ) {
+				if( bullet && bullet.state.active ) {
 					update_bullet( ts, bullet );
 				}
 			}
@@ -883,16 +957,25 @@ function init_game() {
 	}
 
 	function game_loop( ts ) {
-		ctx_ent.clearRect( 0, 0, WIDTH_MAP, HEIGHT_MAP );
 		update_me( ts );
 		update_segments( ts );
 		update_players( ts );
 		update_bullets( ts );
-		draw_bullets();
-		draw_players( ts );
-		draw_segments();
-		draw_me();
-		draw_viewport();
+		if( SERVER ) {
+			if( spawned ) {
+				send_update();
+			}
+		} else {
+			ctx_ent.clearRect( 0, 0, WIDTH_MAP, HEIGHT_MAP );
+			draw_bullets();
+			draw_players( ts );
+			draw_segments();
+			if( CLIENT ) {
+				draw_me();
+				draw_viewport();
+				send_update( me.update_x_tile, me.update_y_tile, me.update_idx_bullet );
+			}
+		}
 		window.requestAnimationFrame( game_loop );
 	}
 
@@ -981,7 +1064,6 @@ function init_game() {
 
 	function init_listeners() {
 		//ctx_tile.fillRect( 0, 0, WIDTH_MAP, HEIGHT_MAP );
-		me = new Me( activate_player() );
 		if( me != null ) {
 			hud.addEventListener( "mousemove", handle_mousemove );
 			hud.addEventListener( "mousedown", handle_mousedown );
@@ -990,7 +1072,6 @@ function init_game() {
 			document.addEventListener( "keydown", handle_keydown );
 			document.addEventListener( "keyup", handle_keyup );
 		}
-		init_segments( [ create_serpent( false, 0, 1, 80 ), create_serpent( false, 1, 1, 80 ), create_serpent( false, 2, 1, 80 ), create_serpent( false, 3, 1, 80 ) ] );
 		IMG_FOREST.addEventListener( "load", callback_forest );
 		IMG_FOREST.addEventListener( "error", callback_forest );
 		//IMG_FOREST.src = "assets/forest.png";
@@ -1005,11 +1086,9 @@ function init_game() {
 				draw_tile( x, y );
 			}
 		}
-		init_listeners();
 	}
 
 	function init_tiles() {
-		// TODO: Add server-based tile population for client
 		var y, x;
 		for( y = 0; y < THEIGHT_MAP; ++y ) {
 			tiles.push( [] );
@@ -1017,13 +1096,56 @@ function init_game() {
 				tiles[ y ].push( 0 );
 			}
 		}
-		draw_tiles();
+	}
+
+	function init_game_state() {
+		if( CLIENT || VR ) {
+			tiles = init_data.tiles;
+			segments = init_data.segments;
+			players = init_data.players;
+			for( var i = 0; i < players.length; ++i ) {
+				animate_player( players[ i ] );
+			}
+			bullets = init_data.bullets;
+			if( CLIENT ) {
+				me = new Me( init_data.me );
+				me.player.alive = true;
+				console.log( me );
+			}
+			draw_tiles();
+		}
+		game_state[ "tiles" ] = tiles;
+		game_state[ "players" ] = players;
+		game_state[ "bullets" ] = bullets;
+		game_state[ "segments" ] = segments;
+		game_state[ "activate_player" ] = activate_player;
+		game_state[ "parse_bullet" ] = parse_bullet;
+		game_state[ "parse_player" ] = parse_player;
+		game_state[ "add_bullet" ] = add_bullet;
+		game_state[ "add_player" ] = add_player;
+		game_state[ "draw_tile" ] = draw_tile;
+		//game_state[ "parse_segment" ] = activate_bullet;
+		game_state[ "scale" ] = SCALE;
+		cb_init( game_state );
+		if( SERVER ) {
+
+		} else if( CLIENT ) {
+			init_listeners();
+		}
+		console.log( "st" )
+		window.requestAnimationFrame( game_loop );
 	}
 
 	function callback_sprites( evt ) {
 		sprites = evt;
-		init_tiles();
+		init_game_state();
 	}
 
-	init_sprites( callback_sprites, SCALE );
+	if( SERVER ) {
+		init_tiles();
+		init_segments( [ create_serpent( false, 0, 1, 80 ), create_serpent( false, 1, 1, 80 ), create_serpent( false, 2, 1, 80 ), create_serpent( false, 3, 1, 80 ) ] );
+		init_game_state();
+	} else {
+		init_sprites( callback_sprites, SCALE );
+	}
 }
