@@ -202,7 +202,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.power = power;
 		this.can_split = split;
 		this.ai = ai;
-		this.defense = 40;
+		this.defense = 2000;
 		this.damage = 10;
 		this.health = 1;
 		this.despawning = false;
@@ -330,7 +330,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		my_bullet.power = bullet.power;
 		my_bullet.state.last_update = -1;
 		my_bullet.damage = bullet.damage;
-		my_bullet.state.time_left = bullet.time_left;
+		my_bullet.time_left = bullet.time_left;
 	}
 
 	function key_down( key ) {
