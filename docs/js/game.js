@@ -47,6 +47,14 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	var TWIDTH_MAP = 240,
 		THEIGHT_MAP = 96;
 
+	var BURN = 3000,
+		BURN_DMG = 1;
+
+	var FREEZE = 3000,
+		FREEZE_MULT = 0.6;
+
+	var HEAL = 5;
+
 	var WIDTH_TILE = 8 * SCALE,
 		HEIGHT_TILE = 8 * SCALE;
 
@@ -116,14 +124,17 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	var hud = document.getElementById( "hud" ),
 		recolor = null;
 
+	if( !SERVER ) {
+
 	var canvas_view = document.getElementById( "game-canvas" ),
 		ctx_view = null,
 		x_view = 0,
 		y_view = 0;
 
-	canvas_view.width = WIDTH_VIEW;
-	canvas_view.height = HEIGHT_VIEW;
-	ctx_view = canvas_view.getContext( "2d" );
+		canvas_view.width = WIDTH_VIEW;
+		canvas_view.height = HEIGHT_VIEW;
+		ctx_view = canvas_view.getContext( "2d" );
+	}
 
 	var tiles = [],
 		sprites = null,
@@ -177,6 +188,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.defense = 10;
 		this.damage = 50;
 		this.despawning = false;
+		this.time_burn = 0;
+		this.time_freeze = 0;
 	}
 
 	function SerpentBody( idx, idx_head, split, power, ai ) {
@@ -233,6 +246,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.ready = false;
 		this.max = MAX_HEALTH;
 		this.time_respawn = 0;
+		this.time_burn = 0;
+		this.time_freeze = 0;
 		//this.time_jump = 100;
 	}
 
@@ -249,6 +264,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.x_tile = 0;
 		this.y_tile = 0;
 		this.last_fired = -1;
+		this.cooldown = 200;
 		this.readied = 0;
 		this.building = true;
 		this.switched = false;
@@ -258,6 +274,15 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.update_idx_bullet = -1;
 		this.player.color = color;
 		this.head = null;
+	}
+
+	function parse_hex_to_rgb(hex_str) {
+		let rgb = [];
+		for(let i = 0; i < 6; i += 2) {
+			rgb.push(parseInt(hex_str.substring(i, i + 2), 16));
+		}
+		console.log(hex_str + rgb);
+		return rgb;
 	}
 
 	function parse_state( scale, my_state, state ) {
@@ -377,6 +402,21 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			bullet.time_left = BULLET_DURATION;
 		}
 		bullet.state.active = true;
+		var rgb = parse_hex_to_rgb( players[ pid ].color );
+		console.log(rgb)
+		if( rgb[ 0 ] > rgb[ 1 ] && rgb[ 0 ] > rgb[ 2 ] ) {
+			bullet.power = POWER_FIRE;
+			bullet.damage = 300;
+		} if( rgb[ 1 ] > rgb[ 0 ] && rgb[ 1 ] > rgb[ 2 ] ) {
+			bullet.power = POWER_EARTH;
+			bullet.damage = 200;
+		} if( rgb[ 2 ] > rgb[ 0 ] && rgb[ 2 ] > rgb[ 1 ] ) {
+			bullet.power = POWER_ICE;
+			bullet.damage = 500;
+		} else {
+			bullet.power = POWER_AIR;
+			bullet.damage = 1000;
+		}
 		return idx;
 	}
 
@@ -529,12 +569,23 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 				}
 				if( hit ) {
 					var angle_kb = get_angle_kb( hit, me.player );
+					if( segment.is_head ) {
+						if( segment.power == POWER_FIRE ) me.player.time_burn = BURN;
+						else if( segment.power == POWER_ICE ) me.player.time_freeze = FREEZE;
+					}
 					me.player.state.dx = ANGLES[ angle_kb ][ 1 ] * KNOCKBACK;
 					me.player.state.dy = ANGLES[ angle_kb ][ 2 ] * KNOCKBACK;
 					me.player.hit = true;
 					me.invulnerable = 600;
 					me.player.health -= hit.damage;
 				}
+			}
+			if( me.player.time_burn > 0 ) {
+				me.player.time_burn -= ticks;
+				me.player.health -= BURN_DMG;
+			}
+			if( me.player.time_freeze > 0 ) {
+				me.player.time_freeze -= ticks;
 			}
 			if( ( !me.switched ) && down_q ) {
 				me.switched = true;
@@ -565,7 +616,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 					}
 				} else {
 					if( me.last_fired == -1 ) me.last_fired = ts - 200;
-					if( ts - me.last_fired >= 200 ) {
+					if( ts - me.last_fired >= me.cooldown ) {
 						var bullet_idx = activate_bullet( me.idx );
 						var bullet = bullets[ me.idx ][ bullet_idx ];
 						bullet.state.x = me.player.state.x + HWIDTH_PLAYER;
@@ -573,6 +624,15 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 						bullet.state.angle = a;
 						bullet.state.dx = BULLET_VELOCITY * ANGLES[ a ][ 1 ];
 						bullet.state.dy = BULLET_VELOCITY * ANGLES[ a ][ 2 ];
+						if( bullet.power == POWER_FIRE ) {
+							me.cooldown = 100;
+						} else if( bullet.power == POWER_EARTH ) {
+							me.cooldown = 150;
+						} else if( bullet.power == POWER_ICE ) {
+							me.cooldown = 200;
+						} else if( bullet.power == POWER_AIR ) {
+							me.cooldown = 300;
+						}
 						me.last_fired = ts;
 						me.update_idx_bullet = bullet_idx;
 					}
@@ -625,7 +685,9 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			var dx = player.state.dx, 
 				dy = player.state.dy;
 
-			if( Math.abs( dx ) < TERMINAL_RUNNING ) {
+			var m = 1;
+			if( player.time_freeze > 0 ) m = FREEZE_MULT;
+			if( Math.abs( dx ) < TERMINAL_RUNNING * m ) {
 				dx += player.running * RUNNING * ticks;
 			}
 			
@@ -720,6 +782,17 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	    var speed = BASE_SERPENT_VELOCITY * ( head.length ** EXP_SERPENT_VELOCITY );
 	    var acceleration = BASE_SERPENT_ACCELERATION * ( head.length ** EXP_SERPENT_ACCELERATION ) * ticks;
 
+	    if( SERVER ) {
+	    	if( head.time_burn > 0 ) {
+	    		head.time_burn -= ticks;
+	    		head.health -= BURN_DMG;
+	    	}
+	    	if( head.time_freeze > 0 ) {
+	    		head.time_freeze -= ticks;
+	    		speed *= FREEZE_MULT;
+	    		acceleration *= FREEZE_MULT;
+	    	}
+	    }
 	    if( head.health == 0 ) {
 	    	head.alive = false;
 	    	head.state.active = false;
@@ -953,18 +1026,27 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 				bullet.state.active = false;
 				if( SERVER ) {
 					var head_segment;
-					if( segment.is_head ) head_segment = segment;
+					if( segment.is_head ) {
+						head_segment = segment;
+						if( bullet.power == POWER_FIRE ) segment.time_burn = BURN;
+						else if( bullet.power == POWER_ICE ) segment.time_freeze = FREEZE;
+					}
 					else head_segment = segments[ segment.idx_head ];
 					var dmg = bullet.damage;
 					dmg = Math.max( 1, dmg - ( segment.defense * 0.75 ) ) | 0;
 					head_segment.health -= dmg;
 					if( head_segment.health < 0 ) head_segment.health = 0;
-					console.log(head_segment.health);
 				} else if( CLIENT ) {
 					var head_segment;
 					if( segment.is_head ) head_segment = segment;
 					else head_segment = segments[ segment.idx_head ];
-					if( bullet.owner == me.player.idx ) me.head = head_segment;
+					if( bullet.owner == me.player.idx ) {
+						me.head = head_segment;
+						if( bullet.power == POWER_EARTH ) {
+							me.player.health += HEAL;
+							if( me.player.health > me.player.max ) me.player.health = me.player.max;
+						}
+					}
 				}
 				break;
 			}
