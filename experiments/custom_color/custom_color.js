@@ -30,7 +30,7 @@ function init_custom_pallete(callback) {
 		x: 0,
 		y: 0,
 		scale: 1,
-		color: [[212, 212, 212]]
+		color: [[255, 255, 255]]
 	};
 	var start;
 
