@@ -53,7 +53,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	var FREEZE = 3000,
 		FREEZE_MULT = 0.6;
 
-	var HEAL = 5;
+	var HEAL = 1;
 
 	var WIDTH_TILE = 8 * SCALE,
 		HEIGHT_TILE = 8 * SCALE;
