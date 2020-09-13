@@ -43,7 +43,10 @@ function update( tx, ty, idx_bullet, head ) {
 	if( tx >= 0 && ty >= 0 ) update_data[ "tile" ] = { x : tx, y : ty, t : game_state.tiles[ ty ][ tx ] };
 	if( idx_bullet >= 0 ) update_data[ "bullet" ] = game_state.bullets[ me ][ idx_bullet ];
 	if( head ) {
+		BOSS_DIV.style.display = "block";
 		update_health_display( boss, head.max, head.health );
+	} else {
+		BOSS_DIV.style.display = "none";
 	}
 	update_health_display( player, 20, game_state.players[ me ].health );
 	send_msg( OP_UPDATE_CLIENT, update_data );

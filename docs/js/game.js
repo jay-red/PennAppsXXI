@@ -379,7 +379,10 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		for( var i = 0; i < segments.length; ++i ) {
 			segment = segments[ i ];
 			if( segment.is_head ) {
-				if( segment.state.y > HEIGHT_MAP ) segment.state.y %= HEIGHT_MAP;
+				if( CLIENT ) me.head = segment;
+				while( segment.state.x < 0 ) segment.state.x += WIDTH_MAP;
+				if( segment.state.x > WIDTH_MAP ) segment.state.x = segment.state.x % WIDTH_MAP;
+				if( segment.state.y > HEIGHT_MAP ) segment.state.y = segment.state.y % HEIGHT_MAP;
 				segment.state.dx = 0;
 				segment.state.dy = 0;
 				segment.health = segment.max;
@@ -547,7 +550,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 					}
 				} else {
 					if( me.last_fired == -1 ) me.last_fired = ts - 200;
-					if( ts - me.last_fired >= 300 ) {
+					if( ts - me.last_fired >= 200 ) {
 						var bullet_idx = activate_bullet( me.idx );
 						var bullet = bullets[ me.idx ][ bullet_idx ];
 						bullet.state.x = me.player.state.x + HWIDTH_PLAYER;
