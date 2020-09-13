@@ -424,6 +424,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 					segments.push( new SerpentBody( idx, head_idx, split, power, ai ) );
 					if( j == num_segs - 1 ) {
 						segments[ idx ].is_tail = true;
+						segments[ idx ].defense = segments[ head_idx ].defense;
 					}
 				}
 			}
