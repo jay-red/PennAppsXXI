@@ -67,15 +67,22 @@ function handle_msg( channel, msg ) {
 				game_state.tiles[ data.tile.y ][ data.tile.x ] = data.tile.t;
 			}
 			if( data.bullet ) {
-				game_state.parse_bullet( game_state.scale, data.bullet );
+				while( game_state.bullets[ data.player.idx ].length <= data.bullet.idx ) game_state.add_bullet( data.player.idx );
+				game_state.parse_bullet( data.scale, data.bullet );
 			}
-			game_state.parse_player( game_state.scale, data.player );
+			game_state.parse_player( data.scale, data.player );
 			break;
 	}
 }
 
 function update() {
-
+	var update_data = {};
+	update_data[ "heads" ] = [];
+	update_data[ "scale" ] = game_state.scale
+	for( var i = 0; i < game_state.heads.length; ++i ) {
+		update_data[ "heads" ].push( game_state.segments[ game_state.heads[ i ] ] );
+	}
+	send_msg( OP_UPDATE_SERVER, update_data );
 }
 
 function callback_init_game( evt ) {

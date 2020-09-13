@@ -132,10 +132,18 @@ function handle_msg( msg ) {
 			}
 			if( data.bullet ) {
 				while( game_state.bullets[ data.player.idx ].length <= data.bullet.idx ) game_state.add_bullet( data.player.idx );
-				game_state.parse_bullet( game_state.scale, data.bullet );
+				game_state.parse_bullet( data.scale, data.bullet );
 			}
-			game_state.parse_player( game_state.scale, data.player );
+			game_state.parse_player( data.scale, data.player );
 			break;
+		case OP_UPDATE_SERVER:
+			if( !synced ) return;
+			if( data.heads.length > 0 ) {
+				if( !game_state.spawned ) game_state.activate_boss();
+				for( var i = 0; i < data.heads.length; ++i ) {
+					game_state.parse_segment( data.scale, data.heads[ i ] );
+				}
+			}
 	}
 }
 

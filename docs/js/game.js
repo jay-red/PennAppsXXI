@@ -162,6 +162,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.ai = ai;
 		this.target = null;
 		this.length = length;
+		this.health = 100;
 	}
 
 	function SerpentBody( idx, idx_head, split, power, ai ) {
@@ -174,6 +175,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.power = power;
 		this.can_split = split;
 		this.ai = ai;
+		this.health = 100;
 	}
 
 	function Bullet( idx, owner ) {
@@ -242,6 +244,12 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		my_state.active = state.active;
 	}
 
+	function parse_segment( scale, segment ) {
+		var my_segment = segment.idx;
+		parse_state( scale, my_segment.state, segment.state );
+		my_segment.health = segment.health;
+	}
+
 	function parse_player( scale, player ) {
 		var my_player = players[ player.idx ];
 		parse_state( scale, my_player.state, player.state );
@@ -272,6 +280,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 
 	var players = [];
 	var segments = [];
+	var heads = [];
 	var bullets = [];
 	var spawned = false;
 	var me = null;
@@ -366,6 +375,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 				idx = segments.length;
 				if( j == 0 ) {
 					head_idx = idx;
+					heads.push( head_idx );
 					segments.push( new SerpentHead( idx, split, power, ai, num_segs ) );
 					segments[ idx ].state.x = Math.random() * WIDTH_MAP;
 					segments[ idx ].state.y = Math.random() * HEIGHT_MAP;
@@ -967,6 +977,16 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		if( SERVER ) {
 			if( spawned ) {
 				send_update();
+			} else {
+				var spawn = false;
+				for( var i = 0; i < players.length; ++i ) {
+					if( players[ i ].state.active && players[ i ].alive && !players[ i ].ready ) break;
+					spawn |= ( players[ i ].state.active && players[ i ].alive );
+					if( spawn && i == players.length - 1 ) {
+						activate_boss();
+						send_update();
+					}
+				}
 			}
 		} else {
 			ctx_ent.clearRect( 0, 0, WIDTH_MAP, HEIGHT_MAP );
@@ -1106,7 +1126,11 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			tiles = init_data.tiles;
 			segments = init_data.segments;
 			players = init_data.players;
-			for( var i = 0; i < players.length; ++i ) {
+			var i;
+			for( i = 0; i < segments.length; ++i ) {
+				if( segments.is_head ) heads.push( head_idx );
+			}
+			for( i = 0; i < players.length; ++i ) {
 				animate_player( players[ i ] );
 			}
 			bullets = init_data.bullets;
@@ -1127,8 +1151,11 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		game_state[ "add_bullet" ] = add_bullet;
 		game_state[ "add_player" ] = add_player;
 		game_state[ "draw_tile" ] = draw_tile;
-		//game_state[ "parse_segment" ] = activate_bullet;
+		game_state[ "heads" ] = heads;
+		game_state[ "parse_segment" ] = parse_segment;
 		game_state[ "scale" ] = SCALE;
+		game_state[ "spawned" ] = spawned;
+		game_state[ "activate_boss" ] = activate_boss;
 		cb_init( game_state );
 		if( SERVER ) {
 
