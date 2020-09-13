@@ -160,7 +160,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.power = power;
 		this.can_split = split;
 		this.ai = ai;
-		this.target = null;
+		this.target = -1;
 		this.length = length;
 		this.health = 100;
 	}
@@ -245,7 +245,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	}
 
 	function parse_segment( scale, segment ) {
-		var my_segment = segment.idx;
+		var my_segment = segments[ segment.idx ];
 		parse_state( scale, my_segment.state, segment.state );
 		my_segment.health = segment.health;
 	}
@@ -456,7 +456,6 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			if( me.readied == 0 && down_enter ) {
 				me.player.ready = !me.player.ready;
 				me.readied = 1;
-				player.ready = !player.ready;
 				console.log( "boss" )
 			} else if( me.readied == 1 && !down_enter ) {
 				me.readied = 0;
@@ -641,19 +640,25 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	    var speed = BASE_SERPENT_VELOCITY * ( head.length ** EXP_SERPENT_VELOCITY );
 	    var acceleration = BASE_SERPENT_ACCELERATION * ( head.length ** EXP_SERPENT_ACCELERATION ) * ticks;
 
-	    if( head.target == null || ( !head.target.state.active ) || ( !head.target.alive ) ) {
-	    	var player;
+	    var target;
+	    if( head.target == -1 ) target = null;
+	    else target = players[ head.target ];
+	    if( target == null || !target.state.active || !target.alive ) {
+	    	var player,
+	    		next_target = -1;
 	    	for( var i = 0; i < players.length; ++i ) {
 	    		player = players[ i ];
 	    		if( player.state.active && player.alive ) {
-	    			head.target = player;
+	    			next_target = i;
 	    			break;
 	    		}
 	    	}
+	    	if( next_target == -1 ) return;
+	    	target = players[ head.target = next_target ];
 	    }
 
-	    var diff_x = head.target.state.x - head.state.x;
-	    var diff_y = head.target.state.y - head.state.y;
+	    var diff_x = target.state.x - head.state.x;
+	    var diff_y = target.state.y - head.state.y;
 
 	    var dist = Math.sqrt( diff_x * diff_x + diff_y * diff_y );
 
