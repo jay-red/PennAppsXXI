@@ -676,6 +676,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 				}
 			}
 
+			if( dy != 0 ) player.jumped = true;
+
 			player.state.dx = dx;
 			player.state.dy = dy;
 			player.state.x = x_next;
