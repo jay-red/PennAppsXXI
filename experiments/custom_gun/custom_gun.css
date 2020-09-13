@@ -19,6 +19,7 @@ body, html {
 
 #canvas-container {
 	grid-area: canvas;
+	padding: 16px;
 }
 
 #right {
@@ -32,6 +33,9 @@ body, html {
 #gun-canvas {
 	width: 100%;
 	height: 100%;
+	border-style: solid;
+	border-color: grey;
+	border-radius: 15px;
 	-ms-interpolation-mode: nearest-neighbor;
 	image-rendering: -webkit-optimize-contrast;
 	image-rendering: optimizeSpeed;
@@ -80,7 +84,7 @@ body, html {
 	margin: 0 24px;
 }
 
-#refresh-icon {
+#reset-icon {
 	width: 5%;
 	padding: 0 16px;
 	cursor: pointer;
@@ -104,7 +108,7 @@ body, html {
 }
 
 .next-button:hover {
-	width: 23%;
+	width: 21%;
 	height: 70px;
 }
 
