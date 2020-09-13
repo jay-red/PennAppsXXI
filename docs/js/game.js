@@ -779,7 +779,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
         	var d1 = target.state.x - head.state.x;
         	var d2 = ( WIDTH_MAP - target.state.x ) - head.state.x;
         	var diff_x = target.state.x - head.state.x;
-        	if( Math.abs( d2 ) < Math.abs( d1 ) ) diff_x = d2;
+        	//if( Math.abs( d2 ) < Math.abs( d1 ) ) diff_x = d2;
 		    var diff_y = target.state.y - head.state.y;
 
 		    var dist = Math.sqrt( diff_x * diff_x + diff_y * diff_y );
