@@ -407,10 +407,10 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		if( rgb[ 0 ] > rgb[ 1 ] && rgb[ 0 ] > rgb[ 2 ] ) {
 			bullet.power = POWER_FIRE;
 			bullet.damage = 300;
-		} if( rgb[ 1 ] > rgb[ 0 ] && rgb[ 1 ] > rgb[ 2 ] ) {
+		} else if( rgb[ 1 ] > rgb[ 0 ] && rgb[ 1 ] > rgb[ 2 ] ) {
 			bullet.power = POWER_EARTH;
 			bullet.damage = 200;
-		} if( rgb[ 2 ] > rgb[ 0 ] && rgb[ 2 ] > rgb[ 1 ] ) {
+		} else if( rgb[ 2 ] > rgb[ 0 ] && rgb[ 2 ] > rgb[ 1 ] ) {
 			bullet.power = POWER_ICE;
 			bullet.damage = 500;
 		} else {
