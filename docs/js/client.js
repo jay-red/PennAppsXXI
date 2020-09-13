@@ -132,9 +132,9 @@ function handle_msg( msg ) {
 			}
 			if( data.bullet ) {
 				while( game_state.bullets[ data.player.idx ].length <= data.bullet.idx ) game_state.add_bullet( data.player.idx );
-				game_state.parse_bullet( data.bullet );
+				game_state.parse_bullet( game_state.scale, data.bullet );
 			}
-			game_state.parse_player( data.player );
+			game_state.parse_player( game_state.scale, data.player );
 			break;
 	}
 }

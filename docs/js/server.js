@@ -67,9 +67,9 @@ function handle_msg( channel, msg ) {
 				game_state.tiles[ data.tile.y ][ data.tile.x ] = data.tile.t;
 			}
 			if( data.bullet ) {
-				game_state.parse_bullet( data.bullet );
+				game_state.parse_bullet( game_state.scale, data.bullet );
 			}
-			game_state.parse_player( data.player );
+			game_state.parse_player( game_state.scale, data.player );
 			break;
 	}
 }

@@ -233,18 +233,18 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.update_idx_bullet = -1;
 	}
 
-	function parse_state( my_state, state ) {
-		my_state.x = state.x;
-		my_state.y = state.y;
-		my_state.dx = state.dx;
-		my_state.dy = state.dy;
+	function parse_state( scale, my_state, state ) {
+		my_state.x = state.x * SCALE / scale;
+		my_state.y = state.y * SCALE / scale;
+		my_state.dx = state.dx * SCALE / scale;
+		my_state.dy = state.dy * SCALE / scale;
 		my_state.angle = state.angle;
 		my_state.active = state.active;
 	}
 
-	function parse_player( player ) {
+	function parse_player( scale, player ) {
 		var my_player = players[ player.idx ];
-		parse_state( my_player.state, player.state );
+		parse_state( scale, my_player.state, player.state );
 		my_player.alive = player.alive;
 		my_player.left = player.left;
 		my_player.running = player.running;
@@ -259,9 +259,9 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		my_player.ready  = player.ready ;
 	}
 
-	function parse_bullet( bullet ) {
+	function parse_bullet( scale, bullet ) {
 		var my_bullet = bullets[ bullet.owner ][ bullet.idx ];
-		parse_state( my_bullet.state, bullet.state );
+		parse_state( scale, my_bullet.state, bullet.state );
 		my_bullet.power = bullet.power;
 		my_bullet.state.last_update = -1;
 	}
