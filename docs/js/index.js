@@ -6,6 +6,7 @@ function init_landing() {
 	var GAME_BUTTONS = document.getElementsByClassName("game-button");
 
 	function handle_button_redirect() {
+		if (ROOM_CODE_INPUT.value === undefined) return;
 		window.location.assign(`${this.getAttribute("href")}?game=${ROOM_CODE_INPUT.value}`);
 		// console.log(`${this.getAttribute("href")}?${ROOM_CODE_INPUT.value}`);
 	}
