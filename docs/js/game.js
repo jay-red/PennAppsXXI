@@ -13,7 +13,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	var IMG_FOREST = new Image();
 
 	var MAX_HEALTH = 400,
-		TIME_RESPAWN = 100;
+		TIME_RESPAWN = 15000;
 
 	var BASE_SERPENT_ACCELERATION = 0.0036 * SCALE,
 		BASE_SERPENT_VELOCITY = 1.2506 * SCALE,
@@ -166,10 +166,10 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.ai = ai;
 		this.target = -1;
 		this.length = length;
-		this.health = 100;
-		this.max = 100;
+		this.health = 60000;
+		this.max = 60000;
 		this.defense = 1;
-		this.damage = 20;
+		this.damage = 50;
 		this.despawning = false;
 	}
 
@@ -183,7 +183,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.power = power;
 		this.can_split = split;
 		this.ai = ai;
-		this.defense = 1;
+		this.defense = 50;
 		this.damage = 10;
 		this.health = 1;
 		this.despawning = false;
@@ -195,7 +195,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.power = POWER_FIRE;
 		this.state = new EntityState();
 		this.hit = false;
-		this.damage = 5;
+		this.damage = 50;
 	}
 
 	function Player( idx ) {
@@ -267,6 +267,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		parse_state( scale, my_segment.state, segment.state );
 		my_segment.health = segment.health;
 		my_segment.despawning = segment.despawning;
+		my_segment.defense = segment.defense;
 	}
 
 	function parse_player( scale, player ) {
@@ -546,7 +547,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 					}
 				} else {
 					if( me.last_fired == -1 ) me.last_fired = ts - 200;
-					if( ts - me.last_fired >= 100 ) {
+					if( ts - me.last_fired >= 300 ) {
 						var bullet_idx = activate_bullet( me.idx );
 						var bullet = bullets[ me.idx ][ bullet_idx ];
 						bullet.state.x = me.player.state.x + HWIDTH_PLAYER;
@@ -910,7 +911,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 					var head_segment;
 					if( segment.is_head ) head_segment = segment;
 					else head_segment = segments[ segment.idx_head ];
-					me.head = head_segment;
+					if( bullet.owner == me.player.idx ) me.head = head_segment;
 				}
 				break;
 			}
@@ -1240,9 +1241,9 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	function init_game_state() {
 		if( SERVER ) {
 			init_tiles();
-			var s = [];
+			var s = [ create_serpent( false, 0, 1, 20 ), create_serpent( false, 1, 1, 40 ), create_serpent( false, 2, 1, 60 ), create_serpent( false, 3, 1, 80 ) ];
 			var i = ( Math.random() * 4 + 1 ) | 0;
-			while( i-- ) s.push( create_serpent( false, ( Math.random() * 4 ) | 0, 1, ( Math.random() * 76 + 5 ) | 0 ) )
+			//while( i-- ) s.push( create_serpent( false, ( Math.random() * 4 ) | 0, 1, ( Math.random() * 76 + 5 ) | 0 ) )
 			init_segments( s );
 		} else {
 			tiles = init_data.tiles;
