@@ -1133,7 +1133,13 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	}
 
 	function init_game_state() {
-		if( CLIENT || VR ) {
+		if( SERVER ) {
+			init_tiles();
+			var s = [];
+			var i = ( Math.random() * 4 + 1 ) | 0;
+			while( i-- ) s.push( create_serpent( false, ( Math.random() * 4 ) | 0, 1, ( Math.random() * 76 + 5 ) | 0 ) )
+			init_segments( s );
+		} else {
 			tiles = init_data.tiles;
 			segments = init_data.segments;
 			players = init_data.players;
@@ -1184,8 +1190,6 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	}
 
 	if( SERVER ) {
-		init_tiles();
-		init_segments( [ create_serpent( false, 0, 1, 80 ), create_serpent( false, 1, 1, 80 ), create_serpent( false, 2, 1, 80 ), create_serpent( false, 3, 1, 80 ) ] );
 		init_game_state();
 	} else {
 		init_sprites( callback_sprites, SCALE );
