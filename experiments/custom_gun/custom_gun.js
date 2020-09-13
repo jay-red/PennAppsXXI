@@ -26,19 +26,52 @@ function init_custom_gun(callback, dim=[20, 10]) {
 			fr_count: 0,
 			bv_count: 0,
 			dmg_count: 0,
-			af_check: 0
+			af_count: 0
 		},
 		dimensions: {
 			w: dim[0],
 			h: dim[1]
 		},
-		mouse_mode: undefined,
+		draw_mode: undefined,
 		px_info: undefined,
 		px_incr: undefined,
 		draw_color: undefined,
 	}
 
+	function total_stats() {
+		let stats = {
+			elemental: GUN.stats.elemental,
+			total_attr_px: 0,
+			fr_count: 0,
+			bv_count: 0,
+			dmg_count: 0,
+			af_count: 0
+		}
+		for(let i = 0; i < GUN.px_info.length; i++) {
+			for(let j = 0; j < GUN.px_info[i].length; j++) {
+				let idx = COLOR_SCHEMES[stats.elemental].indexOf(GUN.px_info[i][j]);
+				if (idx == 4) {
+					stats.af_count += 1;
+				}
+				else if (idx > 0) {
+					stats.total_attr_px += 1;
+					if (idx == 1) {
+						stats.fr_count += 1;
+					}
+					else if (idx == 2) {
+						stats.bv_count += 1;
+					}
+					else if (idx == 3) {
+						stats.dmg_count += 1;
+					}
+				}
+			}
+		}
+		GUN.stats = stats;
+	}
+
 	function calculate_stats() {
+		total_stats();
 		let s = GUN.stats;
 		let pasta = {
 			// string, "neutral" | "fire" | "water" | "earth" | "air"
@@ -50,31 +83,32 @@ function init_custom_gun(callback, dim=[20, 10]) {
 			// decimal, 0 <= dmg <= 1
 			damage: s.dmg_count / s.total_attr_px,
 			// integer, 0 | 1, 1 for autofire=true
-			autofire: s.af_check
+			autofire: s.af_count > 0
 		};
 		console.log(s);
 		console.log(pasta);
 		return pasta;
 	}
 
-	function increment_stats(color) {
-		let idx = COLOR_SCHEMES[GUN.stats.elemental].indexOf(color);
-		if (idx == 4) {
-			GUN.stats.af_check = 1
-		}
-		else if (idx > 0) {
-			GUN.stats.total_attr_px += 1;
-			if (idx == 1) {
-				GUN.stats.fr_count += 1;
-			}
-			else if (idx == 2) {
-				GUN.stats.bv_count += 1;
-			}
-			else if (idx == 3) {
-				GUN.stats.dmg_count += 1;
-			}
-		}
-	}
+	// function modify_stats(color, sign) {
+	// 	sign = sign > 0 ? 1 : -1;
+	// 	let idx = COLOR_SCHEMES[GUN.stats.elemental].indexOf(color);
+	// 	if (idx == 4) {
+	// 		GUN.stats.af_count += sign;
+	// 	}
+	// 	else if (idx > 0) {
+	// 		GUN.stats.total_attr_px += sign;
+	// 		if (idx == 1) {
+	// 			GUN.stats.fr_count += sign;
+	// 		}
+	// 		else if (idx == 2) {
+	// 			GUN.stats.bv_count += sign;
+	// 		}
+	// 		else if (idx == 3) {
+	// 			GUN.stats.dmg_count += sign;
+	// 		}
+	// 	}
+	// }
 
 	function check_draw_pos(pos) {
 		let x_range = 0;
@@ -93,11 +127,18 @@ function init_custom_gun(callback, dim=[20, 10]) {
 				y_idx = i;
 			}
 		}
-		CTX.fillStyle = GUN.draw_color;
-		GUN.px_info[x_idx][y_idx] = GUN.draw_color;
-		increment_stats(GUN.draw_color);
-		CTX.fillRect(x_range, y_range, GUN.px_incr, GUN.px_incr);
-		console.log(CTX.fillStyle);
+		if (GUN.draw_mode) {
+			CTX.fillStyle = GUN.draw_color;
+			GUN.px_info[x_idx][y_idx] = GUN.draw_color;
+			// modify_stats(GUN.draw_color, 1);
+			CTX.fillRect(x_range, y_range, GUN.px_incr, GUN.px_incr);
+			console.log(CTX.fillStyle);
+		}
+		else {
+			// modify_stats(GUN.px_info[x_idx][y_idx], 0);
+			GUN.px_info[x_idx][y_idx] = undefined;
+			CTX.clearRect(x_range, y_range, GUN.px_incr, GUN.px_incr);
+		}
 		console.log(`x_range ${x_range} y_range ${y_range}`);
 	}
 
@@ -118,7 +159,12 @@ function init_custom_gun(callback, dim=[20, 10]) {
 	}
 
 	function handle_mouse_down(e) {
-		GUN.mouse_mode = e.which;
+		if (e.which == 1) {
+			GUN.draw_mode = true;
+		}
+		else if (e.which == 3) {
+			GUN.draw_mode = false;
+		}
 		let pos = get_mouse_pos(CANVAS, e);
 		// CTX.fillRect(pos.x, pos.y, 10, 10);
 		check_draw_pos(pos);
@@ -158,6 +204,9 @@ function init_custom_gun(callback, dim=[20, 10]) {
 	function set_listeners() {
 		CANVAS.addEventListener('mousedown', handle_mouse_down);
 		CANVAS.addEventListener('mouseup', handle_mouse_up);
+		CANVAS.addEventListener('contextmenu', function(evt) { 
+			evt.preventDefault();
+			}, false);
 		RESET_BUTTON.addEventListener('click', handle_canvas_reset);
 		NEXT_BUTTON.addEventListener('click', handle_next_click);
 		window.addEventListener('resize', handle_window_resize);
