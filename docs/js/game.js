@@ -381,7 +381,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 					segments[ idx ].state.y = Math.random() * HEIGHT_MAP;
 				} else {
 					segments.push( new SerpentBody( idx, head_idx, split, power, ai ) );
-					if( idx == num_segs - 1 ) {
+					if( j == num_segs - 1 ) {
 						segments[ idx ].is_tail = true;
 					}
 				}
@@ -456,7 +456,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			if( me.readied == 0 && down_enter ) {
 				me.player.ready = !me.player.ready;
 				me.readied = 1;
-				console.log( "boss" )
+				console.log( "boss" );
 			} else if( me.readied == 1 && !down_enter ) {
 				me.readied = 0;
 			}
