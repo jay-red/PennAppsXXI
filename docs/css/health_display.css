@@ -10,11 +10,18 @@ body, html {
 }
 
 #boss-div {
-	width: 100%;
+	position: absolute;
+	bottom: 10px;
+	width: 80%;
+	left: 50%;
+	margin-left: -40%;
 }
 
 #player-div {
-	width: 100%;
+	position: absolute;
+	width: 20%;
+	top: 10px;
+	right: 10px;
 }
 
 .pixelate {

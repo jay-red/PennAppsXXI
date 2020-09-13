@@ -21,14 +21,20 @@ var rtc,
 	completed_syncs = 0,
 	synced = false,
 	me = -1,
-	init_game_data = {};
+	init_game_data = {},
+	player,
+	boss,
+	BOSS_DIV = document.getElementById("boss-div"),
+	PLAYER_DIV = document.getElementById("player-div");
 
 function callback_init_game( evt ) {
 	game_state = evt;
 	synced = true;
+	player = init_health_display("heart", PLAYER_DIV, game_state.players[ 0 ].max );
+	boss = init_health_display("bar", BOSS_DIV, game_state.segments[ 0 ].max, 0 );
 }
 
-function update( tx, ty, idx_bullet ) {
+function update( tx, ty, idx_bullet, head ) {
 	var update_data = {};
 	update_data[ "player" ] = game_state.players[ me ];
 	update_data[ "bullet" ] = null;
@@ -36,6 +42,10 @@ function update( tx, ty, idx_bullet ) {
 	update_data[ "scale" ] = game_state.scale;
 	if( tx >= 0 && ty >= 0 ) update_data[ "tile" ] = { x : tx, y : ty, t : game_state.tiles[ ty ][ tx ] };
 	if( idx_bullet >= 0 ) update_data[ "bullet" ] = game_state.bullets[ me ][ idx_bullet ];
+	if( head ) {
+		update_health_display( boss, head.max, head.health );
+	}
+	update_health_display( player, 20, game_state.players[ me ].health );
 	send_msg( OP_UPDATE_CLIENT, update_data );
 }
 
@@ -139,7 +149,7 @@ function handle_msg( msg ) {
 		case OP_UPDATE_SERVER:
 			if( !synced ) return;
 			if( data.heads.length > 0 ) {
-				if( !game_state.spawned ) game_state.activate_boss();
+				if( !game_state.spawned && !data.heads[ 0 ].despawning ) game_state.activate_boss();
 				for( var i = 0; i < data.heads.length; ++i ) {
 					game_state.parse_segment( data.scale, data.heads[ i ] );
 				}

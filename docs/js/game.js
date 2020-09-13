@@ -12,6 +12,9 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 
 	var IMG_FOREST = new Image();
 
+	var MAX_HEALTH = 400,
+		TIME_RESPAWN = 100;
+
 	var BASE_SERPENT_ACCELERATION = 0.0036 * SCALE,
 		BASE_SERPENT_VELOCITY = 1.2506 * SCALE,
 		EXP_SERPENT_ACCELERATION = -0.882,
@@ -164,6 +167,10 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.target = -1;
 		this.length = length;
 		this.health = 100;
+		this.max = 100;
+		this.defense = 1;
+		this.damage = 20;
+		this.despawning = false;
 	}
 
 	function SerpentBody( idx, idx_head, split, power, ai ) {
@@ -176,7 +183,10 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.power = power;
 		this.can_split = split;
 		this.ai = ai;
-		this.health = 100;
+		this.defense = 1;
+		this.damage = 10;
+		this.health = 1;
+		this.despawning = false;
 	}
 
 	function Bullet( idx, owner ) {
@@ -185,6 +195,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.power = POWER_FIRE;
 		this.state = new EntityState();
 		this.hit = false;
+		this.damage = 5;
 	}
 
 	function Player( idx ) {
@@ -203,7 +214,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.last_anim = null;
 		this.left = true;
 		this.running = 0;
-		this.health = 100;
+		this.health = MAX_HEALTH;
 		this.ready = false;
 		this.jumped = true;
 		this.jumping = false;
@@ -212,7 +223,9 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.space = false;
 		this.hit = false;
 		this.ready = false;
+		this.max = MAX_HEALTH;
 		this.color = "FFFFFF";
+		this.time_respawn = 0;
 		//this.time_jump = 100;
 	}
 
@@ -237,6 +250,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		this.update_y_tile = -1;
 		this.update_idx_bullet = -1;
 		this.player.color = color;
+		this.head = null;
 	}
 
 	function parse_state( scale, my_state, state ) {
@@ -252,6 +266,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		var my_segment = segments[ segment.idx ];
 		parse_state( scale, my_segment.state, segment.state );
 		my_segment.health = segment.health;
+		my_segment.despawning = segment.despawning;
 	}
 
 	function parse_player( scale, player ) {
@@ -268,7 +283,8 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		my_player.dropped = player.dropped;
 		my_player.space = player.space;
 		my_player.hit = player.hit;
-		my_player.ready  = player.ready ;
+		my_player.ready  = player.ready;
+		my_player.time_respawn = player.time_respawn;
 		if( my_player.color != player.color ) {
 			my_player.color = player.color;
 			if( !SERVER ) animate_player( my_player );
@@ -280,6 +296,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		parse_state( scale, my_bullet.state, bullet.state );
 		my_bullet.power = bullet.power;
 		my_bullet.state.last_update = -1;
+		my_bullet.damage = bullet.damage;
 	}
 
 	function key_down( key ) {
@@ -355,10 +372,22 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 
 	function activate_boss() {
 		if( spawned ) return;
+		console.log( "respawned" );
 		spawned = true;
 		var segment;
 		for( var i = 0; i < segments.length; ++i ) {
 			segment = segments[ i ];
+			if( segment.is_head ) {
+				if( segment.state.y > HEIGHT_MAP ) segment.state.y %= HEIGHT_MAP;
+				segment.state.dx = 0;
+				segment.state.dy = 0;
+				segment.health = segment.max;
+			} else {
+				segment.state.x = 0;
+				segment.state.y = 0;
+				segment.state.dx = 0;
+				segment.state.dy = 0;
+			}
 			segment.state.active = true;
 			segment.alive = true;
 		}
@@ -445,101 +474,104 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		me.update_x_tile = -1;
 		me.update_y_tile = -1;
 		me.update_idx_bullet = -1;
-		var ticks = ts - me.last_update;
-		if( me.invulnerable > 0 ) me.invulnerable -= ticks;
-		var down_a = key_down( KEY_A ),
-			down_d = key_down( KEY_D ),
-			down_q = key_down( KEY_Q ),
-			down_enter = key_down( KEY_ENTER );
-		me.player.space = key_down( KEY_SPACE );
-		me.player.down = key_down( KEY_S );
-		if( down_a && !down_d ) {
-			me.player.running = -1;
-		} else if( down_d && !down_a ) {
-			me.player.running = 1;
-		} else {
-			me.player.running = 0;
-		}
-		if( !spawned ) {
-			if( me.readied == 0 && down_enter ) {
-				me.player.ready = !me.player.ready;
-				me.readied = 1;
-				console.log( "boss" );
-			} else if( me.readied == 1 && !down_enter ) {
-				me.readied = 0;
+		if( me.player.alive ) {
+			var ticks = ts - me.last_update;
+			if( me.invulnerable > 0 ) me.invulnerable -= ticks;
+			var down_a = key_down( KEY_A ),
+				down_d = key_down( KEY_D ),
+				down_q = key_down( KEY_Q ),
+				down_enter = key_down( KEY_ENTER );
+			me.player.space = key_down( KEY_SPACE );
+			me.player.down = key_down( KEY_S );
+			if( down_a && !down_d ) {
+				me.player.running = -1;
+			} else if( down_d && !down_a ) {
+				me.player.running = 1;
+			} else {
+				me.player.running = 0;
 			}
-		} else if( me.invulnerable <= 0 ){
-			var segment,
-			hit = null;
-			for( var i = 0; i < segments.length; ++i ) {
-				segment = segments[ i ];
-				if( segment.state.active && segment.alive ) {
-					if( overlaps_player( segment, me.player ) ) {
-						hit = segment;
-						break;
+			if( !spawned ) {
+				if( me.readied == 0 && down_enter ) {
+					me.player.ready = !me.player.ready;
+					me.readied = 1;
+					console.log( "boss" );
+				} else if( me.readied == 1 && !down_enter ) {
+					me.readied = 0;
+				}
+			} else if( me.invulnerable <= 0 ){
+				var segment,
+				hit = null;
+				for( var i = 0; i < segments.length; ++i ) {
+					segment = segments[ i ];
+					if( segment.state.active && segment.alive ) {
+						if( overlaps_player( segment, me.player ) ) {
+							hit = segment;
+							break;
+						}
+					}
+				}
+				if( hit ) {
+					var angle_kb = get_angle_kb( hit, me.player );
+					me.player.state.dx = ANGLES[ angle_kb ][ 1 ] * KNOCKBACK;
+					me.player.state.dy = ANGLES[ angle_kb ][ 2 ] * KNOCKBACK;
+					me.player.hit = true;
+					me.invulnerable = 600;
+					me.player.health -= hit.damage;
+				}
+			}
+			if( ( !me.switched ) && down_q ) {
+				me.switched = true;
+				me.building = !me.building;
+			} else if( me.switched && ( !down_q ) ) {
+				me.switched = false;
+			}
+			me.x_tile = ( ( x_view + me.x_mouse ) / WIDTH_TILE ) | 0;
+			me.y_tile = ( ( y_view + me.y_mouse ) / HEIGHT_TILE ) | 0;
+			var mx = me.x_mouse - HWIDTH_VIEW;
+			var my = me.y_mouse - HHEIGHT_VIEW;
+			var a = Math.atan2( my, mx );
+			while( a < 0 ) a += Math.PI * 2;
+			a = ( ( a / Math.PI * 180 ) | 0 ) % 360;
+			me.player.left = ( a >= 90 ) && ( a <= 270 );
+			if( me.down_left ) {
+				if( me.building ) {
+					var tile = get_tile( me.x_tile, me.y_tile );
+					if( tile == 0 ) {
+						tiles[ me.y_tile ][ me.x_tile ] = 1;
+						draw_tile( me.x_tile - 1, me.y_tile );
+						draw_tile( me.x_tile, me.y_tile );
+						draw_tile( me.x_tile + 1, me.y_tile );
+						me.update_x_tile = me.x_tile;
+						me.update_y_tile = me.y_tile;
+					}
+				} else {
+					if( me.last_fired == -1 ) me.last_fired = ts - 200;
+					if( ts - me.last_fired >= 100 ) {
+						var bullet_idx = activate_bullet( me.idx );
+						var bullet = bullets[ me.idx ][ bullet_idx ];
+						bullet.state.x = me.player.state.x + HWIDTH_PLAYER;
+						bullet.state.y = me.player.state.y + HHEIGHT_PLAYER;
+						bullet.state.angle = a;
+						bullet.state.dx = BULLET_VELOCITY * ANGLES[ a ][ 1 ];
+						bullet.state.dy = BULLET_VELOCITY * ANGLES[ a ][ 2 ];
+						me.last_fired = ts;
+						me.update_idx_bullet = bullet_idx;
+					}
+				}
+			} else if( me.down_right ) {
+				if( me.building ) {
+					if( get_tile( me.x_tile, me.y_tile ) == 1 ) {
+						tiles[ me.y_tile ][ me.x_tile ] = 0;
+						draw_tile( me.x_tile - 1, me.y_tile );
+						draw_tile( me.x_tile, me.y_tile );
+						draw_tile( me.x_tile + 1, me.y_tile );
+						me.update_x_tile = me.x_tile;
+						me.update_y_tile = me.y_tile;
 					}
 				}
 			}
-			if( hit ) {
-				var angle_kb = get_angle_kb( segment, me.player );
-				me.player.state.dx = ANGLES[ angle_kb ][ 1 ] * KNOCKBACK;
-				me.player.state.dy = ANGLES[ angle_kb ][ 2 ] * KNOCKBACK;
-				me.player.hit = true;
-				me.invulnerable = 600;
-			}
+			me.last_update = ts;
 		}
-		if( ( !me.switched ) && down_q ) {
-			me.switched = true;
-			me.building = !me.building;
-		} else if( me.switched && ( !down_q ) ) {
-			me.switched = false;
-		}
-		me.x_tile = ( ( x_view + me.x_mouse ) / WIDTH_TILE ) | 0;
-		me.y_tile = ( ( y_view + me.y_mouse ) / HEIGHT_TILE ) | 0;
-		var mx = me.x_mouse - HWIDTH_VIEW;
-		var my = me.y_mouse - HHEIGHT_VIEW;
-		var a = Math.atan2( my, mx );
-		while( a < 0 ) a += Math.PI * 2;
-		a = ( ( a / Math.PI * 180 ) | 0 ) % 360;
-		me.player.left = ( a >= 90 ) && ( a <= 270 );
-		if( me.down_left ) {
-			if( me.building ) {
-				var tile = get_tile( me.x_tile, me.y_tile );
-				if( tile == 0 ) {
-					tiles[ me.y_tile ][ me.x_tile ] = 1;
-					draw_tile( me.x_tile - 1, me.y_tile );
-					draw_tile( me.x_tile, me.y_tile );
-					draw_tile( me.x_tile + 1, me.y_tile );
-					me.update_x_tile = me.x_tile;
-					me.update_y_tile = me.y_tile;
-				}
-			} else {
-				if( me.last_fired == -1 ) me.last_fired = ts - 200;
-				if( ts - me.last_fired >= 100 ) {
-					var bullet_idx = activate_bullet( me.idx );
-					var bullet = bullets[ me.idx ][ bullet_idx ];
-					bullet.state.x = me.player.state.x + HWIDTH_PLAYER;
-					bullet.state.y = me.player.state.y + HHEIGHT_PLAYER;
-					bullet.state.angle = a;
-					bullet.state.dx = BULLET_VELOCITY * ANGLES[ a ][ 1 ];
-					bullet.state.dy = BULLET_VELOCITY * ANGLES[ a ][ 2 ];
-					me.last_fired = ts;
-					me.update_idx_bullet = bullet_idx;
-				}
-			}
-		} else if( me.down_right ) {
-			if( me.building ) {
-				if( get_tile( me.x_tile, me.y_tile ) == 1 ) {
-					tiles[ me.y_tile ][ me.x_tile ] = 0;
-					draw_tile( me.x_tile - 1, me.y_tile );
-					draw_tile( me.x_tile, me.y_tile );
-					draw_tile( me.x_tile + 1, me.y_tile );
-					me.update_x_tile = me.x_tile;
-					me.update_y_tile = me.y_tile;
-				}
-			}
-		}
-		me.last_update = ts;
 	}
 
 	function reset_jump( player ) {
@@ -550,90 +582,105 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 
 	function update_player( ts, player ) {
 		if( player.state.last_update == -1 ) player.state.last_update = ts;
+
 		var ticks = ts - player.state.last_update;
 
-		var x_last = player.state.x,
-			y_last = player.state.y;
-
-		var dy_last = player.state.dy;
-
-		var dx = player.state.dx, 
-			dy = player.state.dy;
-
-		if( Math.abs( dx ) < TERMINAL_RUNNING ) {
-			dx += player.running * RUNNING * ticks;
+		if( player.time_respawn > 0 ) {
+			player.time_respawn -= ticks;
+		} else if( !player.alive ) {
+			player.alive = true;
 		}
-		
-		if( player.running == 0 && Math.abs( dx ) < 0.05 ) dx = 0;
-		else if( dx < 0 ) dx += FRICTION * ticks;
-		else dx -= FRICTION * ticks;
-
-		if( player.space && !player.jumped ) {
-			player.jumped = true;
-			player.jumping = true;
-			player.dropped = true;
-			dy += JUMP;
-		} else if( player.space && !player.jumping ) {
-
+		if( player.health < 0 ) {
+			player.alive = false;
+			player.health = MAX_HEALTH;
+			player.time_respawn = TIME_RESPAWN;
 		}
 
-		dy += GRAVITY * ticks;
-		if( dy > TERMINAL_VELOCITY ) {
-			dy = TERMINAL_VELOCITY;
-		}
+		if( player.alive ) {
 
-		var x_next = player.state.x + dx * ticks,
-			y_next = player.state.y + dy * ticks;
+			var x_last = player.state.x,
+				y_last = player.state.y;
 
-		if( player.down && !player.dropped && dy_last == 0 || player.hit ) {
-			player.dropped = true;
-			player.hit = false;
-			y_last += HEIGHT_TILE + 1;
-			y_next += 1;
-		}
+			var dy_last = player.state.dy;
 
-		if( x_next < 0 ) {
-			x_next = 0;
-			dx = 0;
-		}
-		if( y_next < 0 ) {
-			y_next = 0;
-			dy = 0;
-		}
+			var dx = player.state.dx, 
+				dy = player.state.dy;
 
-		if( x_next + WIDTH_PLAYER >= WIDTH_MAP ) {
-			x_next = WIDTH_MAP - WIDTH_PLAYER;
-			dx = 0;
-		}
-		if( y_next + HEIGHT_PLAYER >= HEIGHT_MAP ) {
-			y_next = HEIGHT_MAP - HEIGHT_PLAYER;
-			dy = 0;
-			reset_jump( player );
-		}
+			if( Math.abs( dx ) < TERMINAL_RUNNING ) {
+				dx += player.running * RUNNING * ticks;
+			}
+			
+			if( player.running == 0 && Math.abs( dx ) < 0.05 ) dx = 0;
+			else if( dx < 0 ) dx += FRICTION * ticks;
+			else dx -= FRICTION * ticks;
 
-		if( dy > 0 ) {
-			var tx, ty, c = true;
-			var left_tile = Math.floor( x_next / WIDTH_TILE );
-			var right_tile = Math.floor( ( x_next + WIDTH_PLAYER - 1 ) / WIDTH_TILE );
-			var start_tile_y = Math.floor( ( y_last + HEIGHT_PLAYER - 1 ) / HEIGHT_TILE ) + 1;
-			var end_tile_y = Math.floor( ( y_next + HEIGHT_PLAYER ) / HEIGHT_TILE );
-			for( ty = start_tile_y; ty <= end_tile_y && c; ++ty ) {
-				for( tx = left_tile; tx <= right_tile; ++tx ) {
-					if( get_tile( tx, ty ) > 0 ) {
-						y_next = ( ty * HEIGHT_TILE - HEIGHT_PLAYER );
-						c = false;
-						dy = 0;
-						reset_jump( player );
-						break;
+			if( player.space && !player.jumped ) {
+				player.jumped = true;
+				player.jumping = true;
+				player.dropped = true;
+				dy += JUMP;
+			} else if( player.space && !player.jumping ) {
+
+			}
+
+			dy += GRAVITY * ticks;
+			if( dy > TERMINAL_VELOCITY ) {
+				dy = TERMINAL_VELOCITY;
+			}
+
+			var x_next = player.state.x + dx * ticks,
+				y_next = player.state.y + dy * ticks;
+
+			if( player.down && !player.dropped && dy_last == 0 || player.hit ) {
+				player.dropped = true;
+				player.hit = false;
+				y_last += HEIGHT_TILE + 1;
+				y_next += 1;
+			}
+
+			if( x_next < 0 ) {
+				x_next = 0;
+				dx = 0;
+			}
+			if( y_next < 0 ) {
+				y_next = 0;
+				dy = 0;
+			}
+
+			if( x_next + WIDTH_PLAYER >= WIDTH_MAP ) {
+				x_next = WIDTH_MAP - WIDTH_PLAYER;
+				dx = 0;
+			}
+			if( y_next + HEIGHT_PLAYER >= HEIGHT_MAP ) {
+				y_next = HEIGHT_MAP - HEIGHT_PLAYER;
+				dy = 0;
+				reset_jump( player );
+			}
+
+			if( dy > 0 ) {
+				var tx, ty, c = true;
+				var left_tile = Math.floor( x_next / WIDTH_TILE );
+				var right_tile = Math.floor( ( x_next + WIDTH_PLAYER - 1 ) / WIDTH_TILE );
+				var start_tile_y = Math.floor( ( y_last + HEIGHT_PLAYER - 1 ) / HEIGHT_TILE ) + 1;
+				var end_tile_y = Math.floor( ( y_next + HEIGHT_PLAYER ) / HEIGHT_TILE );
+				for( ty = start_tile_y; ty <= end_tile_y && c; ++ty ) {
+					for( tx = left_tile; tx <= right_tile; ++tx ) {
+						if( get_tile( tx, ty ) > 0 ) {
+							y_next = ( ty * HEIGHT_TILE - HEIGHT_PLAYER );
+							c = false;
+							dy = 0;
+							reset_jump( player );
+							break;
+						}
 					}
 				}
 			}
-		}
 
-		player.state.dx = dx;
-		player.state.dy = dy;
-		player.state.x = x_next;
-		player.state.y = y_next;
+			player.state.dx = dx;
+			player.state.dy = dy;
+			player.state.x = x_next;
+			player.state.y = y_next;
+		}
 
 		player.state.last_update = ts;
 	}
@@ -644,6 +691,15 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 
 	    var speed = BASE_SERPENT_VELOCITY * ( head.length ** EXP_SERPENT_VELOCITY );
 	    var acceleration = BASE_SERPENT_ACCELERATION * ( head.length ** EXP_SERPENT_ACCELERATION ) * ticks;
+
+	    if( head.health == 0 ) {
+	    	head.alive = false;
+	    	head.state.active = false;
+	    }
+	    if( !head.alive || !head.state.active ) {
+	    	if( CLIENT && head == me.head ) me.head = null;
+	    	return;
+	    }
 
 	    var target;
 	    if( head.target == -1 ) target = null;
@@ -657,55 +713,81 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 	    			next_target = i;
 	    			break;
 	    		}
+	    		player.ready = false;
 	    	}
-	    	if( next_target == -1 ) return;
-	    	target = players[ head.target = next_target ];
+	    	if( next_target == -1 ) target = null;
+	    	else target = players[ head.target = next_target ];
 	    }
+	    if( target == null || head.despawning ) {
+            head.state.dy += 0.11;
+            if( head.state.dy > speed ) head.state.dy = speed;
+            if( Math.abs( head.state.dx ) + Math.abs( head.state.dy ) < speed * 0.4 ) {
+                if( head.state.dx < 0.0 ) head.state.dx -= acceleration * 1.1;
+                else head.state.dx += acceleration * 1.1;
+            } else if( head.state.dy == speed ) {
+                if( head.state.dx < diff_y ) head.state.dx += acceleration;
+                else if ( head.state.dx > diff_x ) head.state.dx -= acceleration;
+            } else if( head.state.dy > 4.0 ) {
+                if( head.state.dx < 0.0 ) head.state.dx += acceleration * 0.9;
+                else head.state.dx -= acceleration * 0.9;
+            }
+            head.despawning = true;
+        } else {
+		    var diff_x = target.state.x - head.state.x;
+		    var diff_y = target.state.y - head.state.y;
 
-	    var diff_x = target.state.x - head.state.x;
-	    var diff_y = target.state.y - head.state.y;
+		    var dist = Math.sqrt( diff_x * diff_x + diff_y * diff_y );
 
-	    var dist = Math.sqrt( diff_x * diff_x + diff_y * diff_y );
-
-		// TODO: Play serpent sound
-	    var dist_x = Math.abs( diff_x );
-	    var dist_y = Math.abs( diff_y );
-	    var new_speed = speed / dist;
-	    diff_x *= new_speed;
-	    diff_y *= new_speed;
-	    if( head.state.dx > 0.0 && diff_x > 0.0 || 
-	    	head.state.dx < 0.0 && diff_x < 0.0 || 
-	    	( head.state.dy > 0.0 && diff_y > 0.0 || 
-	    		head.state.dy < 0.0 && diff_y < 0.0 ) ) {
-	        if( head.state.dx < diff_x ) head.state.dx += acceleration;
-	        else if( head.state.dx > diff_x ) head.state.dx -= acceleration;
-	        if( head.state.dy < diff_y ) head.state.dy += acceleration;
-	        else if( head.state.dy > diff_y ) head.state.dy -= acceleration;
-	        if( Math.abs( diff_y ) < speed * 0.2 && 
-	        	( head.state.dx > 0.0 && diff_x < 0.0 || head.state.dx < 0.0 && diff_x > 0.0 ) ) {
-	            if( head.state.dy > 0.0 ) head.state.dy += acceleration * 2;
-	            else head.state.dy -= acceleration * 2;
-	        }
-	        if( Math.abs( diff_x ) < speed * 0.2 && 
-	        	( head.state.dy > 0.0 && diff_y < 0.0 || head.state.dy < 0.0 && diff_y > 0.0 ) ) {
-	            if( head.state.dx > 0.0 ) head.state.dx += acceleration * 2;
-	            else head.state.dx -= acceleration * 2;
-	        }
-	    } else if( dist_x > dist_y ) {
-	        if( head.state.dx < diff_x ) head.state.dx += acceleration * 1.1;
-	        else if( head.state.dx > diff_x ) head.state.dx -= acceleration * 1.1;
-	        if( Math.abs( head.state.dx ) + Math.abs( head.state.dy ) < speed * 0.5 ) {
-	            if( head.state.dy > 0.0 ) head.state.dy += acceleration;
-	            else head.state.dy -= acceleration;
-	        }
-	    } else {
-	        if( head.state.dy < diff_y ) head.state.dy += acceleration * 1.1;
-	        else if( head.state.dy > diff_y ) head.state.dy -= acceleration * 1.1;
-	        if( Math.abs( head.state.dx ) + Math.abs( head.state.dy ) < speed * 0.5 ) {
-	            if( head.state.dx > 0.0 ) head.state.dx += acceleration;
-	            else head.state.dx -= acceleration;
-	        }
-	    }
+			// TODO: Play serpent sound
+		    var dist_x = Math.abs( diff_x );
+		    var dist_y = Math.abs( diff_y );
+		    var new_speed = speed / dist;
+		    diff_x *= new_speed;
+		    diff_y *= new_speed;
+		    if( head.state.dx > 0.0 && diff_x > 0.0 || 
+		    	head.state.dx < 0.0 && diff_x < 0.0 || 
+		    	( head.state.dy > 0.0 && diff_y > 0.0 || 
+		    		head.state.dy < 0.0 && diff_y < 0.0 ) ) {
+		        if( head.state.dx < diff_x ) head.state.dx += acceleration;
+		        else if( head.state.dx > diff_x ) head.state.dx -= acceleration;
+		        if( head.state.dy < diff_y ) head.state.dy += acceleration;
+		        else if( head.state.dy > diff_y ) head.state.dy -= acceleration;
+		        if( Math.abs( diff_y ) < speed * 0.2 && 
+		        	( head.state.dx > 0.0 && diff_x < 0.0 || head.state.dx < 0.0 && diff_x > 0.0 ) ) {
+		            if( head.state.dy > 0.0 ) head.state.dy += acceleration * 2;
+		            else head.state.dy -= acceleration * 2;
+		        }
+		        if( Math.abs( diff_x ) < speed * 0.2 && 
+		        	( head.state.dy > 0.0 && diff_y < 0.0 || head.state.dy < 0.0 && diff_y > 0.0 ) ) {
+		            if( head.state.dx > 0.0 ) head.state.dx += acceleration * 2;
+		            else head.state.dx -= acceleration * 2;
+		        }
+		    } else if( dist_x > dist_y ) {
+		        if( head.state.dx < diff_x ) head.state.dx += acceleration * 1.1;
+		        else if( head.state.dx > diff_x ) head.state.dx -= acceleration * 1.1;
+		        if( Math.abs( head.state.dx ) + Math.abs( head.state.dy ) < speed * 0.5 ) {
+		            if( head.state.dy > 0.0 ) head.state.dy += acceleration;
+		            else head.state.dy -= acceleration;
+		        }
+		    } else {
+		        if( head.state.dy < diff_y ) head.state.dy += acceleration * 1.1;
+		        else if( head.state.dy > diff_y ) head.state.dy -= acceleration * 1.1;
+		        if( Math.abs( head.state.dx ) + Math.abs( head.state.dy ) < speed * 0.5 ) {
+		            if( head.state.dx > 0.0 ) head.state.dx += acceleration;
+		            else head.state.dx -= acceleration;
+		        }
+		    }
+		}
+		if( head.despawning ) {
+			var despawn = segments[ head.idx + head.length - 1 ];
+			if( despawn.state.y > HEIGHT_MAP + WIDTH_BODY * 2 ) {
+				head.alive = false;
+				head.active = false;
+				spawned = false;
+				head.despawning = false;
+				if( CLIENT ) me.head = null;
+			}
+		}
 	    head.state.x += head.state.dx * ticks;
 	    head.state.y += head.state.dy * ticks;
 	    head.state.angle = ( Math.atan2( head.state.dy, head.state.dx ) );
@@ -721,6 +803,12 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		var parent = segments[ body.idx - 1 ];
 		var diff_x = parent.state.x - body.state.x;
 		var diff_y = parent.state.y - body.state.y;
+
+		var head_segment = segments[ body.idx_head ];
+		if( !head_segment.alive ) {
+			body.state.active = false;
+			body.alive = false;
+		}
 
 	    body.state.angle = ( Math.atan2( diff_y, diff_x ) );
 	    while( body.state.angle < 0 ) body.state.angle += Math.PI * 2;
@@ -807,6 +895,21 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			segment = segments[ i ];
 			if( contains_bullet( segment, bullet ) ) {
 				bullet.state.active = false;
+				if( SERVER ) {
+					var head_segment;
+					if( segment.is_head ) head_segment = segment;
+					else head_segment = segments[ segment.idx_head ];
+					var dmg = bullet.damage;
+					dmg = Math.max( 1, dmg - ( segment.defense * 0.75 ) ) | 0;
+					head_segment.health -= dmg;
+					if( head_segment.health < 0 ) head_segment.health = 0;
+					console.log(head_segment.health);
+				} else if( CLIENT ) {
+					var head_segment;
+					if( segment.is_head ) head_segment = segment;
+					else head_segment = segments[ segment.idx_head ];
+					me.head = head_segment;
+				}
 				break;
 			}
 		}
@@ -926,7 +1029,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			img;
 		while( i-- ) {
 			segment = segments[ i ];
-			if( ( !segment.state.active ) || ( !segment.alive ) ) continue;
+			if( !segment.state.active || !segment.alive ) continue;
 			offset_x = 0;
 			switch( segment.power ) {
 				case POWER_ICE:
@@ -1006,7 +1109,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 			if( CLIENT ) {
 				draw_me();
 				draw_viewport();
-				send_update( me.update_x_tile, me.update_y_tile, me.update_idx_bullet );
+				send_update( me.update_x_tile, me.update_y_tile, me.update_idx_bullet, me.head );
 			}
 		}
 		window.requestAnimationFrame( game_loop );

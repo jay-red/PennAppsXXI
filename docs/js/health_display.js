@@ -14,11 +14,11 @@ function init_bar_display(div, max, curr, color) {
 	gauge.setAttribute("class", "health-bar-gauge");
 	set_multiple_attributes(shade, {
 		"class": "health-bar-shade",
-		"src": "../assets/healthbar_shade.png"
+		"src": "assets/healthbar_shade.png"
 	})
 	set_multiple_attributes(frame, {
 		"class": "health-bar-frame",
-		"src": "../assets/healthbar_frame.png"
+		"src": "assets/healthbar_frame.png"
 	})
 
 	gauge.appendChild(hp);
@@ -34,7 +34,7 @@ function init_heart_display(div, max, curr, incr) {
 		let heart = document.createElement("img");
 		set_multiple_attributes(heart, {
 			"class": "health-heart-asset",
-			"src": "../assets/health_heart.png"
+			"src": "assets/health_heart.png"
 		});
 		div.appendChild(heart);
 	}
@@ -87,7 +87,6 @@ function update_heart_display(heart_container, incr, curr, extr=undefined) {
 		heart_lst[i].style.opacity = new_opac;
 		if (extr) set_multiple_styles(heart_lst[i], extr);
 	}
-	console.log(heart_lst[0]);
 }
 
 // input: div: health display div to be updated
@@ -112,12 +111,12 @@ function set_multiple_attributes(dom, attributes) {
 }
 
 function set_multiple_styles(dom, styles) {
-	console.log(styles);
 	for(const sty in styles) {
 		dom.style[sty] = styles[sty];
 	}
 }
 
+/**
 ///////////testing/////////////
 var BOSS_DIV = document.getElementById("boss-div");
 var PLAYER_DIV = document.getElementById("player-div");
@@ -133,8 +132,7 @@ window.onload = function() {
 		player_hp -= 10;
 		update_health_display(boss, boss_max, boss_hp);
 		update_health_display(player, 20, player_hp);
-		console.log(`boss now at ${boss_hp}/${boss_max}`);
-		console.log(`player now at ${player_hp}/${player_max}`);
+
 	})
 }
-
+**/

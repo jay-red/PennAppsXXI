@@ -2,6 +2,7 @@
 	<head>
 		<title>PennAppsXXI</title>
 		<link rel="stylesheet" type="text/css" href="css/custom_color.css" />
+		<link rel="stylesheet" type="text/css" href="css/health_display.css" />
 		<link rel="stylesheet" type="text/css" href="css/game.css" />
 	</head>
 	<body>
@@ -23,6 +24,10 @@
 			</div>
 		</div>
 		<div id ="hud" class="hide">
+			<div id="boss-div" class="boss-health">
+			</div>
+			<div id="player-div" class="player-health">
+			</div>
 		</div>
 		<div id="game-screen" class="hide">
 			<canvas id="game-canvas"></canvas>
@@ -42,6 +47,7 @@
 			firebase.initializeApp( firebaseConfig );
 		</script>
 		<script src="js/custom_color.js"></script>
+		<script src="js/health_display.js"></script>
 		<script src="js/sprites.js"></script>
 		<script src="js/game.js"></script>
 		<script src="js/rtc.js"></script>
