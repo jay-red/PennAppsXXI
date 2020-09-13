@@ -1,6 +1,8 @@
-
-var BOSS_DIV = document.getElementById("boss-div");
-var PLAYER_DIV = document.getElementById("player-div");
+// health_display.js
+// use init_health_display() to initializa a health display
+// and return the display
+// you can then update that any health display by passing
+// the display into update_health_display()
 
 function init_bar_display(div, max, curr, color) {
 	let hp = document.createElement("div");
@@ -116,7 +118,9 @@ function set_multiple_styles(dom, styles) {
 	}
 }
 
-// testing
+///////////testing/////////////
+var BOSS_DIV = document.getElementById("boss-div");
+var PLAYER_DIV = document.getElementById("player-div");
 window.onload = function() {
 	var boss_max = 300;
 	var boss_hp = 255;
