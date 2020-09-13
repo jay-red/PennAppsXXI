@@ -3,8 +3,16 @@ body, html {
 	overflow: hidden;
 }
 
+#bg-video {
+	position: fixed;
+	right: 0;
+	bottom: 0;
+	min-width: 100vw;
+	min-height: 100vh;
+}
+
 .container {
-	position: relative;
+	position: fixed;
 	width: 100vw;
 	height: 100vh;
 	text-align: center;
@@ -49,9 +57,14 @@ body, html {
 	background-color: #151826;
 	color: #606e82;
 	font-family: 'Geo', sans-serif;
+	opacity: .6;
 }
 
-#host-server-button {
+.game-button:hover {
+	opacity: 1;
+}
+
+.single-center-button {
     margin: 127.5px 24px;
 }
 
@@ -59,12 +72,15 @@ body, html {
 	font-size: 3em;
 	color: #2c422f;
 	letter-spacing: .05em;
+	/*-webkit-text-stroke-width: 2px;
+    -webkit-text-stroke-color: #151826;*/
 }
 
 h1 span {
 	font-size: 3em;
 	color: #606e82;
-}
+/*	color: #151826;
+*/}
 
 a {
 	text-decoration: none;
