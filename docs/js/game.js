@@ -896,6 +896,7 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		var segment;
 		for( var i = 0; i < segments.length; ++i ) {
 			segment = segments[ i ];
+			if( !segment.state.active || !segment.alive ) continue;
 			if( contains_bullet( segment, bullet ) ) {
 				bullet.state.active = false;
 				if( SERVER ) {
@@ -934,12 +935,10 @@ function init_game( cb_init, send_update, node_type, init_data ) {
 		var segment;
 		for( var i = 0; i < segments.length; ++i ) {
 			segment = segments[ i ];
-			if( segment && segment.state.active && segment.alive ) {
-				if( segment.is_head ) {
-					update_head( ts, segment );
-				} else {
-					update_body( ts, segment );
-				}
+			if( segment.is_head ) {
+				update_head( ts, segment );
+			} else {
+				update_body( ts, segment );
 			}
 		}
 	}
